@@ -175,4 +175,6 @@ Die Anwendung öffnet sich anschließend automatisch im Browser.
 
 ## Autor:innen
 
+Artur Surberg
+
 Projekt im Rahmen des Moduls Softwaredesign.
