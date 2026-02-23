@@ -4,6 +4,17 @@ import numpy as np
 from src.model import Node, Spring, Structure
 from src.solver import solve_displacements
 from src.viz import plot_structure
+from src.optimizer import Optimizer
+
+# Session State initialisieren
+if "struct" not in st.session_state:
+    st.session_state.struct = None
+
+if "disp" not in st.session_state:
+    st.session_state.disp = None
+
+if "u" not in st.session_state:
+    st.session_state.u = None
 
 def build_grid_structure(width: float, height: float, nx: int, ny: int, k: float,
                          diag: bool) -> Structure:
@@ -88,20 +99,57 @@ if solve_btn:
 
     try:
         u, disp = solve_displacements(struct)
-        max_u = float(np.max(np.abs(u))) if u.size else 0.0
 
-        with col1:
-            st.subheader("Visualisierung")
-            fig = plot_structure(struct, disp, scale=scale, show_nodes=False)
-            st.pyplot(fig, clear_figure=True)
+        # In Session speichern
+        st.session_state.struct = struct
+        st.session_state.disp = disp
+        st.session_state.u = u
 
-        with col2:
-            st.subheader("Kennzahlen")
-            st.write(f"Knoten: {len(struct.nodes)}")
-            st.write(f"Federn: {len(struct.springs)}")
-            st.write(f"Max |u|: {max_u:.6g}")
-            st.write("Hinweis: Bei Singularität fehlen Lager/Connectivity.")
     except Exception as e:
         st.error(str(e))
-else:
+
+# Optimizer (nur wenn Struktur existiert)
+if st.session_state.struct is not None:
+    optimizer = Optimizer(percent_remove=20)
+
+    if st.button("Optimize once"):
+        try:
+            removed = optimizer.step(
+                st.session_state.struct,
+                st.session_state.disp
+            )
+
+            # neu lösen
+            u, disp = solve_displacements(st.session_state.struct)
+
+            # wieder speichern
+            st.session_state.u = u
+            st.session_state.disp = disp
+
+            st.success(f"Entfernte Federn: {removed}")
+
+        except Exception as e:
+            st.error(str(e))
+
+# Anzeige, wenn Ergebnis vorhanden
+if st.session_state.struct is not None and st.session_state.disp is not None:
+    struct = st.session_state.struct
+    disp = st.session_state.disp
+    u = st.session_state.u
+
+    max_u = float(np.max(np.abs(u))) if u.size else 0.0
+
+    with col1:
+        st.subheader("Visualisierung")
+        fig = plot_structure(struct, disp, scale=scale, show_nodes=False)
+        st.pyplot(fig, clear_figure=True)
+
+    with col2:
+        st.subheader("Kennzahlen")
+        st.write(f"Knoten: {len(struct.nodes)}")
+        st.write(f"Federn: {len(struct.springs)}")
+        st.write(f"Max |u|: {max_u:.6g}")
+        st.write("Hinweis: Bei Singularität fehlen Lager/Connectivity.")
+
+if st.session_state.struct is None:
     st.info("Links Parameter setzen und **Generate + Solve** drücken.")
