@@ -83,7 +83,7 @@ with st.sidebar:
     fy = st.number_input("Fy", value= -10.0)
 
     st.header("Plot")
-    scale = st.number_input("Deformations-Skalierung", value=50.0, min_value=0.0)
+    scale = st.number_input("Deformations-Skalierung", value=1.0, min_value=0.0)
 
     solve_btn = st.button("Generate + Solve")
 
