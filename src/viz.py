@@ -1,39 +1,70 @@
-import numpy as np
 import matplotlib.pyplot as plt
 from src.model import Structure
 
-def plot_structure(struct: Structure, disp: dict[int, tuple[float,float]] | None, scale: float, show_nodes: bool = True):
+
+def plot_original(struct: Structure, show_nodes: bool = False):
     fig, ax = plt.subplots()
 
-    # Original springs
     for sp in struct.springs:
         ni = struct.nodes[sp.i]
         nj = struct.nodes[sp.j]
-        ax.plot([ni.x, nj.x], [ni.y, nj.y])
+        ax.plot([ni.x, nj.x], [ni.z, nj.z])
 
     if show_nodes:
         xs = [n.x for n in struct.nodes.values()]
-        ys = [n.y for n in struct.nodes.values()]
-        ax.scatter(xs, ys)
-
-    # Deformed overlay
-    if disp is not None:
-        for sp in struct.springs:
-            ni = struct.nodes[sp.i]
-            nj = struct.nodes[sp.j]
-            uix, uiy = disp[sp.i]
-            ujx, ujy = disp[sp.j]
-            ax.plot([ni.x + scale*uix, nj.x + scale*ujx],
-                    [ni.y + scale*uiy, nj.y + scale*ujy])
-
-        if show_nodes:
-            dxs = [n.x + scale*disp[n.id][0] for n in struct.nodes.values()]
-            dys = [n.y + scale*disp[n.id][1] for n in struct.nodes.values()]
-            ax.scatter(dxs, dys)
+        zs = [n.z for n in struct.nodes.values()]
+        ax.scatter(xs, zs)
 
     ax.set_aspect("equal", adjustable="box")
-    ax.invert_yaxis()  # matches "origin top-left" convention
+    ax.invert_yaxis()  # Ursprung links oben, z nach unten
     ax.set_xlabel("x")
-    ax.set_ylabel("y")
-    ax.set_title("Structure (original + deformed overlay)")
+    ax.set_ylabel("z")
+    ax.set_title("Original")
+    return fig
+
+
+def plot_deformed(struct: Structure, disp: dict[int, tuple[float, float]], scale: float = 1.0, show_nodes: bool = False):
+    fig, ax = plt.subplots()
+
+    for sp in struct.springs:
+        ni = struct.nodes[sp.i]
+        nj = struct.nodes[sp.j]
+        uix, uiz = disp[sp.i]
+        ujx, ujz = disp[sp.j]
+        ax.plot(
+            [ni.x + scale * uix, nj.x + scale * ujx],
+            [ni.z + scale * uiz, nj.z + scale * ujz],
+        )
+
+    if show_nodes:
+        xs = [n.x + scale * disp[n.id][0] for n in struct.nodes.values()]
+        zs = [n.z + scale * disp[n.id][1] for n in struct.nodes.values()]
+        ax.scatter(xs, zs)
+
+    ax.set_aspect("equal", adjustable="box")
+    ax.invert_yaxis()
+    ax.set_xlabel("x")
+    ax.set_ylabel("z")
+    ax.set_title("Deformed")
+    return fig
+
+
+def plot_optimized(struct: Structure, show_nodes: bool = False):
+    fig, ax = plt.subplots()
+
+    for sp in struct.springs:
+        ni = struct.nodes[sp.i]
+        nj = struct.nodes[sp.j]
+        ax.plot([ni.x, nj.x], [ni.z, nj.z])
+
+    if show_nodes:
+        xs = [n.x for n in struct.nodes.values()]
+        zs = [n.z for n in struct.nodes.values()]
+        ax.scatter(xs, zs)
+
+    ax.set_aspect("equal", adjustable="box")
+    ax.invert_yaxis()
+    ax.set_xlabel("x")
+    ax.set_ylabel("z")
+    ax.set_title("Optimized")
     return fig

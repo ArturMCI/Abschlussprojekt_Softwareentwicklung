@@ -1,110 +1,150 @@
+import copy
 import numpy as np
 
+from src.model import Structure
+from src.solver import solve_displacements
 
-class Optimizer:
-    """
-    Entfernt iterativ Federn mit geringer Dehnenergie.
-    Minimal-Variante für Topologieoptimierung.
-    """
 
-    def __init__(self, percent_remove: float = 20.0):
-        """
-        percent_remove: Prozentsatz der schwächsten Federn,
-                        die pro Schritt entfernt werden.
-        """
-        self.percent_remove = percent_remove
+def spring_energy(struct: Structure, disp: dict[int, tuple[float, float]]) -> dict[tuple[int, int], float]:
+    energies: dict[tuple[int, int], float] = {}
 
-    def compute_spring_energies(self, struct, disp):
-        energies = []
+    for sp in struct.springs:
+        ni = struct.nodes[sp.i]
+        nj = struct.nodes[sp.j]
 
-        for s in struct.springs:
-            n1 = struct.nodes[s.i]
-            n2 = struct.nodes[s.j]
+        dx = nj.x - ni.x
+        dz = nj.z - ni.z
+        L = float(np.hypot(dx, dz))
+        if L == 0.0:
+            continue
 
-            # ursprüngliche Länge
-            dx0 = n2.x - n1.x
-            dy0 = n2.y - n1.y
-            L0 = np.hypot(dx0, dy0)
+        c = dx / L
+        s = dz / L
 
-            # deformierte Länge
-            u1 = disp[s.i]
-            u2 = disp[s.j]
+        uix, uiz = disp[sp.i]
+        ujx, ujz = disp[sp.j]
 
-            dx = (n2.x + u2[0]) - (n1.x + u1[0])
-            dy = (n2.y + u2[1]) - (n1.y + u1[1])
-            L = np.hypot(dx, dy)
+        delta = c * (ujx - uix) + s * (ujz - uiz)  # along spring axis
+        E = 0.5 * sp.k * (delta ** 2)
 
-            dL = L - L0
-            energy = 0.5 * s.k * dL**2
-            energies.append(energy)
+        key = (min(sp.i, sp.j), max(sp.i, sp.j))
+        energies[key] = energies.get(key, 0.0) + float(E)
 
-        return np.array(energies)
-    
-    def _is_connected(self, struct) -> bool:
-        """
-        Prüft, ob alle Knoten über Federn erreichbar sind (Graph-Connectivity).
-        """
-        if len(struct.nodes) == 0:
-            return True
+    return energies
 
-        # Adjazenzliste aufbauen
-        adj = {nid: set() for nid in struct.nodes.keys()}
 
-        for s in struct.springs:
-            if s.i in adj and s.j in adj:
-                adj[s.i].add(s.j)
-                adj[s.j].add(s.i)
+def node_scores_from_energies(struct: Structure, energies: dict[tuple[int, int], float]) -> dict[int, float]:
+    scores = {nid: 0.0 for nid in struct.nodes.keys()}
+    for (i, j), E in energies.items():
+        if i in scores:
+            scores[i] += 0.5 * E
+        if j in scores:
+            scores[j] += 0.5 * E
+    return scores
 
-        # BFS
-        start = next(iter(struct.nodes.keys()))
-        visited = set()
-        stack = [start]
 
-        while stack:
-            nid = stack.pop()
-            if nid in visited:
-                continue
-            visited.add(nid)
-            stack.extend(adj[nid] - visited)
+def reachable_from_fixed(struct: Structure) -> set[int]:
+    fixed_nodes = [nid for nid, n in struct.nodes.items() if n.fixed_x or n.fixed_z]
+    if not fixed_nodes:
+        return set()
 
-        return len(visited) == len(struct.nodes)
+    adj = struct.adjacency()
+    seen: set[int] = set()
+    stack = list(fixed_nodes)
 
-    def step(self, struct, disp):
-        """
-        Führt einen Optimierungsschritt aus:
-        - Energie berechnen
-        - Kandidaten entfernen
-        - Connectivity prüfen
-        - Nur übernehmen, wenn gültig
-        """
+    while stack:
+        cur = stack.pop()
+        if cur in seen:
+            continue
+        seen.add(cur)
+        for nb in adj.get(cur, []):
+            if nb not in seen:
+                stack.append(nb)
 
-        if len(struct.springs) == 0:
-            return 0
+    return seen
 
-        energies = self.compute_spring_energies(struct, disp)
-        threshold = np.percentile(energies, self.percent_remove)
 
-        # Kandidat erzeugen (noch NICHT übernehmen)
-        candidate_springs = [
-            s for s, e in zip(struct.springs, energies)
-            if e > threshold
-        ]
+def is_connectivity_ok(struct: Structure, protected: set[int]) -> bool:
+    reachable = reachable_from_fixed(struct)
+    for p in protected:
+        if p in struct.nodes and p not in reachable:
+            return False
+    return True
 
-        removed = len(struct.springs) - len(candidate_springs)
 
-        # Backup
-        original_springs = struct.springs.copy()
+# FIX 1
+def min_degree_ok(struct: Structure, protected: set[int], min_deg: int = 2) -> bool:
+    adj = struct.adjacency()
+    for nid in struct.nodes.keys():
+        if nid in protected:
+            continue
+        if len(adj.get(nid, set())) < min_deg:
+            return False
+    return True
 
-        # Testweise setzen
-        struct.springs = candidate_springs
 
-        # Connectivity prüfen
-        if not self._is_connected(struct):
-            # zurücksetzen
-            struct.springs = original_springs
-            raise ValueError(
-                "Optimierung abgebrochen: Struktur würde auseinanderfallen."
-            )
+def try_remove_one_node(struct: Structure, disp: dict[int, tuple[float, float]], protected: set[int]) -> Structure | None:
+    energies = spring_energy(struct, disp)
+    scores = node_scores_from_energies(struct, energies)
 
-        # Alles ok → Änderung bleibt
-        return removed
+    candidates = sorted(
+        [nid for nid in struct.nodes.keys() if nid not in protected],
+        key=lambda nid: scores.get(nid, 0.0)
+    )
+
+    for nid in candidates:
+        trial = copy.deepcopy(struct)
+        trial.remove_node(nid)
+
+        # FIX 1: reject too-sparse structures
+        if not min_degree_ok(trial, protected=protected, min_deg=2):
+            continue
+
+        # connectivity check
+        if not is_connectivity_ok(trial, protected):
+            continue
+
+        # FIX 2: must be mechanically solvable (K not singular)
+        try:
+            solve_displacements(trial)
+        except Exception:
+            continue
+
+        return trial
+
+    return None
+
+
+def optimize_until_target(
+    struct: Structure,
+    protected: set[int],
+    target_mass: float,
+    max_steps: int = 10_000,
+) -> tuple[Structure | None, int, str]:
+
+    if struct.total_mass() <= target_mass:
+        return struct, 0, "Already at or below target mass."
+
+    current = copy.deepcopy(struct)
+
+    if not is_connectivity_ok(current, protected):
+        return None, 0, "Initial structure fails connectivity check."
+
+    steps = 0
+    while current.total_mass() > target_mass and steps < max_steps:
+        try:
+            _, disp = solve_displacements(current)
+        except Exception as e:
+            return None, steps, f"Solver failed during optimization: {e}"
+
+        nxt = try_remove_one_node(current, disp, protected)
+        if nxt is None:
+            return current, steps, "No more safe removable nodes found."
+
+        current = nxt
+        steps += 1
+
+    if current.total_mass() > target_mass:
+        return current, steps, "Reached max_steps before target mass."
+
+    return current, steps, "Optimization finished (target mass reached)."
