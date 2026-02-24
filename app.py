@@ -113,22 +113,25 @@ if st.session_state.struct is not None:
     optimizer = Optimizer(percent_remove=20)
 
     if st.button("Optimize once"):
+        struct = st.session_state.struct
+
+        # Backup komplette Struktur
+        old_springs = struct.springs.copy()
+
         try:
-            removed = optimizer.step(
-                st.session_state.struct,
-                st.session_state.disp
-            )
+            removed = optimizer.step(struct, st.session_state.disp)
 
-            # neu lösen
-            u, disp = solve_displacements(st.session_state.struct)
+            # Solver testen
+            u, disp = solve_displacements(struct)
 
-            # wieder speichern
+            # nur wenn Solver ok → speichern
             st.session_state.u = u
             st.session_state.disp = disp
-
             st.success(f"Entfernte Federn: {removed}")
 
         except Exception as e:
+            # alles rückgängig
+            struct.springs = old_springs
             st.error(str(e))
 
 # Anzeige, wenn Ergebnis vorhanden

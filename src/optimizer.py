@@ -39,27 +39,72 @@ class Optimizer:
             energies.append(energy)
 
         return np.array(energies)
+    
+    def _is_connected(self, struct) -> bool:
+        """
+        Prüft, ob alle Knoten über Federn erreichbar sind (Graph-Connectivity).
+        """
+        if len(struct.nodes) == 0:
+            return True
+
+        # Adjazenzliste aufbauen
+        adj = {nid: set() for nid in struct.nodes.keys()}
+
+        for s in struct.springs:
+            if s.i in adj and s.j in adj:
+                adj[s.i].add(s.j)
+                adj[s.j].add(s.i)
+
+        # BFS
+        start = next(iter(struct.nodes.keys()))
+        visited = set()
+        stack = [start]
+
+        while stack:
+            nid = stack.pop()
+            if nid in visited:
+                continue
+            visited.add(nid)
+            stack.extend(adj[nid] - visited)
+
+        return len(visited) == len(struct.nodes)
 
     def step(self, struct, disp):
         """
         Führt einen Optimierungsschritt aus:
         - Energie berechnen
-        - Schwächste Federn entfernen
+        - Kandidaten entfernen
+        - Connectivity prüfen
+        - Nur übernehmen, wenn gültig
         """
 
         if len(struct.springs) == 0:
             return 0
 
         energies = self.compute_spring_energies(struct, disp)
-
         threshold = np.percentile(energies, self.percent_remove)
 
-        new_springs = [
+        # Kandidat erzeugen (noch NICHT übernehmen)
+        candidate_springs = [
             s for s, e in zip(struct.springs, energies)
             if e > threshold
         ]
 
-        removed = len(struct.springs) - len(new_springs)
-        struct.springs = new_springs
+        removed = len(struct.springs) - len(candidate_springs)
 
+        # Backup
+        original_springs = struct.springs.copy()
+
+        # Testweise setzen
+        struct.springs = candidate_springs
+
+        # Connectivity prüfen
+        if not self._is_connected(struct):
+            # zurücksetzen
+            struct.springs = original_springs
+            raise ValueError(
+                "Optimierung abgebrochen: Struktur würde auseinanderfallen."
+            )
+
+        # Alles ok → Änderung bleibt
         return removed
