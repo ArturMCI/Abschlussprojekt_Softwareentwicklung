@@ -142,17 +142,17 @@ if st.session_state.struct is not None and st.session_state.disp is not None:
 
     max_u = float(np.max(np.abs(u))) if u.size else 0.0
 
-    with col1:
-        st.subheader("Visualisierung")
-        fig = plot_structure(struct, disp, scale=scale, show_nodes=False)
-        st.pyplot(fig, clear_figure=True)
 
-    with col2:
-        st.subheader("Kennzahlen")
-        st.write(f"Knoten: {len(struct.nodes)}")
-        st.write(f"Federn: {len(struct.springs)}")
-        st.write(f"Max |u|: {max_u:.6g}")
-        st.write("Hinweis: Bei Singularität fehlen Lager/Connectivity.")
+    st.subheader("Visualisierung")
+    fig = plot_structure(struct, disp, scale=scale, show_nodes=False)
+    st.pyplot(fig, clear_figure=True)
+
+    
+    st.subheader("Kennzahlen")
+    st.write(f"Knoten: {len(struct.nodes)}")
+    st.write(f"Federn: {len(struct.springs)}")
+    st.write(f"Max |u|: {max_u:.6g}")
+    st.write("Hinweis: Bei Singularität fehlen Lager/Connectivity.")
 
 if st.session_state.struct is None:
     st.info("Links Parameter setzen und **Generate + Solve** drücken.")
