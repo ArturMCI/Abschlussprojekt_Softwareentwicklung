@@ -188,5 +188,6 @@ Die Anwendung öffnet sich anschließend automatisch im Browser.
 ## Autor:innen
 
 Artur Surberg
+Julian Köll
 
 Projekt im Rahmen des Moduls Softwaredesign.
