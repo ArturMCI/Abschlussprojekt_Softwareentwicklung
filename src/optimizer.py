@@ -5,6 +5,8 @@ from src.model import Structure
 from src.solver import solve_displacements
 
 
+# Energie-Berechnung
+
 def spring_energy(struct: Structure, disp: dict[int, tuple[float, float]]) -> dict[tuple[int, int], float]:
     energies: dict[tuple[int, int], float] = {}
 
@@ -24,7 +26,7 @@ def spring_energy(struct: Structure, disp: dict[int, tuple[float, float]]) -> di
         uix, uiz = disp[sp.i]
         ujx, ujz = disp[sp.j]
 
-        delta = c * (ujx - uix) + s * (ujz - uiz)  # along spring axis
+        delta = c * (ujx - uix) + s * (ujz - uiz)
         E = 0.5 * sp.k * (delta ** 2)
 
         key = (min(sp.i, sp.j), max(sp.i, sp.j))
@@ -42,6 +44,41 @@ def node_scores_from_energies(struct: Structure, energies: dict[tuple[int, int],
             scores[j] += 0.5 * E
     return scores
 
+
+
+# Qualitätschecks
+
+def total_strain_energy(struct: Structure, disp: dict[int, tuple[float, float]]) -> float:
+    total = 0.0
+
+    for sp in struct.springs:
+        ni = struct.nodes[sp.i]
+        nj = struct.nodes[sp.j]
+
+        dx = nj.x - ni.x
+        dz = nj.z - ni.z
+        L = float(np.hypot(dx, dz))
+        if L == 0.0:
+            continue
+
+        c = dx / L
+        s = dz / L
+
+        uix, uiz = disp[sp.i]
+        ujx, ujz = disp[sp.j]
+
+        delta = c * (ujx - uix) + s * (ujz - uiz)
+        total += 0.5 * sp.k * delta ** 2
+
+    return float(total)
+
+
+def max_displacement(disp: dict[int, tuple[float, float]]) -> float:
+    return max(np.hypot(ux, uz) for ux, uz in disp.values())
+
+
+
+# Connectivity
 
 def reachable_from_fixed(struct: Structure) -> set[int]:
     fixed_nodes = [nid for nid, n in struct.nodes.items() if n.fixed_x or n.fixed_z]
@@ -72,7 +109,6 @@ def is_connectivity_ok(struct: Structure, protected: set[int]) -> bool:
     return True
 
 
-# FIX 1
 def min_degree_ok(struct: Structure, protected: set[int], min_deg: int = 2) -> bool:
     adj = struct.adjacency()
     for nid in struct.nodes.keys():
@@ -83,7 +119,20 @@ def min_degree_ok(struct: Structure, protected: set[int], min_deg: int = 2) -> b
     return True
 
 
-def try_remove_one_node(struct: Structure, disp: dict[int, tuple[float, float]], protected: set[int]) -> Structure | None:
+
+# Knoten-Entfernung
+
+def try_remove_one_node(
+    struct: Structure,
+    disp: dict[int, tuple[float, float]],
+    protected: set[int],
+    max_disp_factor: float = 1.5,
+    max_energy_factor: float = 1.5,
+) -> Structure | None:
+
+    base_energy = total_strain_energy(struct, disp)
+    base_max_disp = max_displacement(disp)
+
     energies = spring_energy(struct, disp)
     scores = node_scores_from_energies(struct, energies)
 
@@ -92,28 +141,47 @@ def try_remove_one_node(struct: Structure, disp: dict[int, tuple[float, float]],
         key=lambda nid: scores.get(nid, 0.0)
     )
 
+    best_trial = None
+    best_score = None
+
     for nid in candidates:
         trial = copy.deepcopy(struct)
         trial.remove_node(nid)
 
-        # FIX 1: reject too-sparse structures
+        # Mindestgrad
         if not min_degree_ok(trial, protected=protected, min_deg=2):
             continue
 
-        # connectivity check
+        # Connectivity
         if not is_connectivity_ok(trial, protected):
             continue
 
-        # FIX 2: must be mechanically solvable (K not singular)
+        # Solver-Test
         try:
-            solve_displacements(trial)
+            _, disp_trial = solve_displacements(trial)
         except Exception:
             continue
 
-        return trial
+        # Qualitätsprüfung
+        new_energy = total_strain_energy(trial, disp_trial)
+        new_max_disp = max_displacement(disp_trial)
 
-    return None
+        if new_energy > base_energy * max_energy_factor:
+            continue
 
+        if new_max_disp > base_max_disp * max_disp_factor:
+            continue
+
+        score = scores.get(nid, 0.0)
+
+        if best_score is None or score < best_score:
+            best_score = score
+            best_trial = trial
+
+    return best_trial
+
+
+# Optimierung
 
 def optimize_until_target(
     struct: Structure,
@@ -138,6 +206,7 @@ def optimize_until_target(
             return None, steps, f"Solver failed during optimization: {e}"
 
         nxt = try_remove_one_node(current, disp, protected)
+
         if nxt is None:
             return current, steps, "No more safe removable nodes found."
 
