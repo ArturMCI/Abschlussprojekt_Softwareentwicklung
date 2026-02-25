@@ -113,8 +113,8 @@ if "support_nodes" not in st.session_state:
 with st.sidebar:
     st.header("Grid (x-z)")
     st.write("Anzahl der Knoten: ")
-    nx = st.number_input("Breite (x)", value=30, min_value=1)
-    nz = st.number_input("Höhe (z)", value=15, min_value=1)
+    nx = st.number_input("Breite (x)", value=20, min_value=1)
+    nz = st.number_input("Höhe (z)", value=10, min_value=1)
     #k = st.number_input("Federsteifigkeit k (h/v)", value=100.0, min_value=0.0001)
 
     st.header("Randbedingungen (MBB)")
@@ -212,10 +212,10 @@ else:
 
     c1, c2 = st.columns(2)
 
-    st.subheader("Originale Struktur")
+    st.subheader("Originale Struktur:")
     st.pyplot(plot_original(struct, show_nodes=False), clear_figure=True)
     
-    st.subheader("Deformierte Struktur (Skalierung = 1)")
+    st.subheader("Deformierte Struktur:")
     if disp is not None:
         st.pyplot(plot_deformed(struct, disp, scale=SCALE, show_nodes=False), clear_figure=True)
     else:
@@ -231,7 +231,7 @@ else:
         opt_struct = st.session_state.optimized_struct
 
         st.markdown("---")
-        st.subheader("Optimierte Struktur (bis Zielmasse)")
+        st.subheader("Optimierte Struktur:")
 
         c3, c4 = st.columns(2)
 
@@ -239,7 +239,7 @@ else:
         st.pyplot(plot_optimized(opt_struct, show_nodes=False), clear_figure=True)
 
         # Solve and plot deformation of optimized structure
-        st.subheader("Deformation (optimiert, Skalierung = 1)")
+        st.subheader("Deformierte optimierte Struktur:")
         try:
             _, opt_disp = solve_displacements(opt_struct)
             st.pyplot(
