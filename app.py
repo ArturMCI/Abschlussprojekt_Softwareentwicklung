@@ -1,3 +1,4 @@
+import numpy as np
 import streamlit as st
 
 from src.model import Node, Spring, Structure
@@ -7,6 +8,10 @@ from src.optimizer import optimize_until_target
 
 
 def build_grid_structure(width: float, height: float, nx: int, nz: int, k: float) -> Structure:
+    """
+    Grid mit H/V-Federn (k) und Diagonalen (k/sqrt(2)).
+    Diagonalen sind IMMER aktiv (laut deiner Projektvorgabe).
+    """
     nodes: dict[int, Node] = {}
     springs: list[Spring] = []
 
@@ -21,40 +26,69 @@ def build_grid_structure(width: float, height: float, nx: int, nz: int, k: float
     def nid(i, j):
         return j * nx + i
 
+    k_diag = float(k) / np.sqrt(2.0)
+
     for j in range(nz):
         for i in range(nx):
             # horizontal + vertical
             if i + 1 < nx:
-                springs.append(Spring(i=nid(i, j), j=nid(i + 1, j), k=k))
+                springs.append(Spring(i=nid(i, j), j=nid(i + 1, j), k=float(k)))
             if j + 1 < nz:
-                springs.append(Spring(i=nid(i, j), j=nid(i, j + 1), k=k))
+                springs.append(Spring(i=nid(i, j), j=nid(i, j + 1), k=float(k)))
 
-            # diagonals ALWAYS
+            # diagonals ALWAYS (mit k/sqrt(2))
             if i + 1 < nx and j + 1 < nz:
-                springs.append(Spring(i=nid(i, j), j=nid(i + 1, j + 1), k=k))
+                springs.append(Spring(i=nid(i, j), j=nid(i + 1, j + 1), k=k_diag))
             if i - 1 >= 0 and j + 1 < nz:
-                springs.append(Spring(i=nid(i, j), j=nid(i - 1, j + 1), k=k))
+                springs.append(Spring(i=nid(i, j), j=nid(i - 1, j + 1), k=k_diag))
 
     return Structure(nodes=nodes, springs=springs)
 
 
-def apply_left_edge_fixed(struct: Structure, nx: int, nz: int):
-    for j in range(nz):
-        n = j * nx + 0
-        struct.nodes[n].fixed_x = True
-        struct.nodes[n].fixed_z = True
+def apply_mbb_supports(struct: Structure, nx: int, nz: int, left_type: str, right_type: str) -> tuple[int, int]:
+    """
+    MBB-Setup: Auflager nur unten links & unten rechts.
+    - Festlager: fixed_x=True, fixed_z=True
+    - Loslager: fixed_x=False, fixed_z=True
+    """
+    # unten links / unten rechts
+    n_left = (nz - 1) * nx + 0
+    n_right = (nz - 1) * nx + (nx - 1)
+
+    # reset supports (wichtig, wenn mehrfach gelöst wird)
+    for n in struct.nodes.values():
+        n.fixed_x = False
+        n.fixed_z = False
+
+    def set_support(nid: int, typ: str):
+        if typ == "Festlager":
+            struct.nodes[nid].fixed_x = True
+            struct.nodes[nid].fixed_z = True
+        elif typ == "Loslager":
+            struct.nodes[nid].fixed_x = False
+            struct.nodes[nid].fixed_z = True
+        else:
+            raise ValueError(f"Unbekannter Lagertyp: {typ}")
+
+    set_support(n_left, left_type)
+    set_support(n_right, right_type)
+
+    return n_left, n_right
 
 
 def apply_force_at(struct: Structure, nx: int, i: int, j: int, fz: float) -> int:
+    """
+    Kraft nur in z-Richtung am Knoten (i,j).
+    """
     n = j * nx + i
-    struct.nodes[n].fz += fz
+    struct.nodes[n].fz += float(fz)
     return n
 
 
 st.set_page_config(page_title="Federstruktur (x-z)", layout="wide")
-st.title("2D-Federstruktur (x-z) – Solver & Optimize-until-target")
+st.title("2D-Federstruktur (x-z) – Solver & MBB-Optimizer")
 
-SCALE = 1.0  # no UI control
+SCALE = 1.0  # keine UI-Kontrolle
 
 if "struct" not in st.session_state:
     st.session_state.struct = None
@@ -64,6 +98,8 @@ if "optimized_struct" not in st.session_state:
     st.session_state.optimized_struct = None
 if "force_node_id" not in st.session_state:
     st.session_state.force_node_id = None
+if "support_nodes" not in st.session_state:
+    st.session_state.support_nodes = None  # (left_id, right_id)
 
 
 with st.sidebar:
@@ -72,15 +108,17 @@ with st.sidebar:
     height = st.number_input("Höhe (z)", value=5.0, min_value=0.1)
     nx = st.slider("nx (Knoten in x)", 2, 40, 12)
     nz = st.slider("nz (Knoten in z)", 2, 40, 6)
-    k = st.number_input("Federsteifigkeit k", value=100.0, min_value=0.0001)
+    k = st.number_input("Federsteifigkeit k (h/v)", value=100.0, min_value=0.0001)
 
-    st.header("Randbedingungen")
-    fix_left = st.checkbox("Linke Kante fixieren", value=True)
+    st.header("Randbedingungen (MBB)")
+    support_left = st.selectbox("Lager links unten", ["Festlager", "Loslager"], index=1)   # default: Loslager
+    support_right = st.selectbox("Lager rechts unten", ["Festlager", "Loslager"], index=0) # default: Festlager
 
     st.header("Kraft (nur z-Richtung)")
-    fi = st.slider("Kraft-Knoten i (x-index)", 0, nx - 1, nx - 1)
+    # MBB-typisch: oben Mitte
+    fi = st.slider("Kraft-Knoten i (x-index)", 0, nx - 1, nx // 2)
     fj = st.slider("Kraft-Knoten j (z-index)", 0, nz - 1, 0)
-    fz = st.number_input("Fz", value=-10.0)
+    fz = st.number_input("Fz (z nach unten → nach unten meist +)", value=10.0)
 
     st.header("Optimierung")
     target_factor = st.slider("Mass reduction factor (Zielmasse)", 0.1, 1.0, 0.5, 0.05)
@@ -95,9 +133,10 @@ with st.sidebar:
 if btn_solve:
     struct = build_grid_structure(width, height, nx, nz, k)
 
-    if fix_left:
-        apply_left_edge_fixed(struct, nx, nz)
+    # MBB supports (nur unten links / unten rechts)
+    left_id, right_id = apply_mbb_supports(struct, nx, nz, support_left, support_right)
 
+    # Force
     force_nid = apply_force_at(struct, nx, fi, fj, fz)
 
     try:
@@ -106,12 +145,14 @@ if btn_solve:
         st.session_state.disp = disp
         st.session_state.optimized_struct = None
         st.session_state.force_node_id = force_nid
+        st.session_state.support_nodes = (left_id, right_id)
         st.success("Solved successfully.")
     except Exception as e:
         st.session_state.struct = None
         st.session_state.disp = None
         st.session_state.optimized_struct = None
         st.session_state.force_node_id = None
+        st.session_state.support_nodes = None
         st.error(str(e))
 
 
@@ -122,9 +163,12 @@ if btn_opt:
         struct = st.session_state.struct
 
         protected = set()
-        for nid, n in struct.nodes.items():
-            if n.fixed_x or n.fixed_z:
-                protected.add(nid)
+
+        # supports schützen
+        if st.session_state.support_nodes is not None:
+            protected.update(st.session_state.support_nodes)
+
+        # force node schützen
         if st.session_state.force_node_id is not None:
             protected.add(st.session_state.force_node_id)
 
