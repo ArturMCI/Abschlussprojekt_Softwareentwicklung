@@ -173,6 +173,18 @@ Die Anwendung öffnet sich anschließend automatisch im Browser.
 
 ------------------------------------------------------------------------
 
+## Funktionsweise Optimizer
+
+1. Modell initialisieren
+2. K * u = F lösen
+3. Verformungsenergie berechnen
+4. Wichtigkeit der Punkte bestimmen
+5. Schwächste Punkte entfernen
+6. Neue Masse berechnen
+7. Wiederholen bis Soll-Masse erreicht
+
+-----------------------------------------------------------------------
+
 ## Autor:innen
 
 Artur Surberg
