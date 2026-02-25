@@ -179,6 +179,25 @@ else:
     st.write(f"Masse (einfach): {struct.total_mass():.2f}")
 
     if st.session_state.optimized_struct is not None:
+        opt_struct = st.session_state.optimized_struct
+
         st.markdown("---")
         st.subheader("Optimierte Struktur (bis Zielmasse)")
-        st.pyplot(plot_optimized(st.session_state.optimized_struct, show_nodes=False), clear_figure=True)
+
+        c3, c4 = st.columns(2)
+
+        # Plot optimized geometry
+        with c3:
+            st.pyplot(plot_optimized(opt_struct, show_nodes=False), clear_figure=True)
+
+        # Solve and plot deformation of optimized structure
+        with c4:
+            st.subheader("Deformation (optimiert, Skalierung = 1)")
+            try:
+                _, opt_disp = solve_displacements(opt_struct)
+                st.pyplot(
+                    plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False),
+                    clear_figure=True
+                )
+            except Exception as e:
+                st.warning(f"Optimized structure could not be solved: {e}")
