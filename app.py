@@ -7,20 +7,24 @@ from src.viz import plot_original, plot_deformed, plot_optimized
 from src.optimizer import optimize_until_target
 
 
-def build_grid_structure(width: float, height: float, nx: int, nz: int, k: float) -> Structure:
+def build_grid_structure(nx: int, nz: int, k: float) -> Structure:
     """
-    Grid mit H/V-Federn (k) und Diagonalen (k/sqrt(2)).
-    Diagonalen sind IMMER aktiv (laut deiner Projektvorgabe).
+    Grid über Knotenzahl generieren.
+    Knoten liegen bei ganzzahligen Koordinaten:
+    x = 0 ... nx-1
+    z = 0 ... nz-1
     """
     nodes: dict[int, Node] = {}
     springs: list[Spring] = []
 
     node_id = 0
     for j in range(nz):
-        z = (height * j) / (nz - 1) if nz > 1 else 0.0
         for i in range(nx):
-            x = (width * i) / (nx - 1) if nx > 1 else 0.0
-            nodes[node_id] = Node(id=node_id, x=float(x), z=float(z))
+            nodes[node_id] = Node(
+                id=node_id,
+                x=float(i),   # nur Index!
+                z=float(j)
+            )
             node_id += 1
 
     def nid(i, j):
@@ -30,17 +34,21 @@ def build_grid_structure(width: float, height: float, nx: int, nz: int, k: float
 
     for j in range(nz):
         for i in range(nx):
-            # horizontal + vertical
-            if i + 1 < nx:
-                springs.append(Spring(i=nid(i, j), j=nid(i + 1, j), k=float(k)))
-            if j + 1 < nz:
-                springs.append(Spring(i=nid(i, j), j=nid(i, j + 1), k=float(k)))
 
-            # diagonals ALWAYS (mit k/sqrt(2))
+            # horizontal
+            if i + 1 < nx:
+                springs.append(Spring(nid(i, j), nid(i + 1, j), k))
+
+            # vertical
+            if j + 1 < nz:
+                springs.append(Spring(nid(i, j), nid(i, j + 1), k))
+
+            # diagonals
             if i + 1 < nx and j + 1 < nz:
-                springs.append(Spring(i=nid(i, j), j=nid(i + 1, j + 1), k=k_diag))
+                springs.append(Spring(nid(i, j), nid(i + 1, j + 1), k_diag))
+
             if i - 1 >= 0 and j + 1 < nz:
-                springs.append(Spring(i=nid(i, j), j=nid(i - 1, j + 1), k=k_diag))
+                springs.append(Spring(nid(i, j), nid(i - 1, j + 1), k_diag))
 
     return Structure(nodes=nodes, springs=springs)
 
@@ -104,11 +112,10 @@ if "support_nodes" not in st.session_state:
 
 with st.sidebar:
     st.header("Grid (x-z)")
-    width = st.number_input("Breite (x)", value=10.0, min_value=0.1)
-    height = st.number_input("Höhe (z)", value=5.0, min_value=0.1)
-    nx = st.slider("nx (Knoten in x)", 2, 40, 12)
-    nz = st.slider("nz (Knoten in z)", 2, 40, 6)
-    k = st.number_input("Federsteifigkeit k (h/v)", value=100.0, min_value=0.0001)
+    st.write("Anzahl der Knoten: ")
+    nx = st.number_input("Breite (x)", value=30, min_value=1)
+    nz = st.number_input("Höhe (z)", value=15, min_value=1)
+    #k = st.number_input("Federsteifigkeit k (h/v)", value=100.0, min_value=0.0001)
 
     st.header("Randbedingungen (MBB)")
     support_left = st.selectbox("Lager links unten", ["Festlager", "Loslager"], index=1)   # default: Loslager
@@ -131,7 +138,7 @@ with st.sidebar:
 
 
 if btn_solve:
-    struct = build_grid_structure(width, height, nx, nz, k)
+    struct = build_grid_structure(nx, nz, 100)
 
     # MBB supports (nur unten links / unten rechts)
     left_id, right_id = apply_mbb_supports(struct, nx, nz, support_left, support_right)
@@ -223,6 +230,27 @@ else:
     st.write(f"Masse (einfach): {struct.total_mass():.2f}")
 
     if st.session_state.optimized_struct is not None:
+        opt_struct = st.session_state.optimized_struct
+
         st.markdown("---")
         st.subheader("Optimierte Struktur (bis Zielmasse)")
-        st.pyplot(plot_optimized(st.session_state.optimized_struct, show_nodes=False), clear_figure=True)
+
+        c3, c4 = st.columns(2)
+
+        # Plot optimized geometry
+        with c3:
+            st.pyplot(plot_optimized(opt_struct, show_nodes=False), clear_figure=True)
+
+        # Solve and plot deformation of optimized structure
+        with c4:
+            st.subheader("Deformation (optimiert, Skalierung = 1)")
+            try:
+                _, opt_disp = solve_displacements(opt_struct)
+                st.pyplot(
+                    plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False),
+                    clear_figure=True
+                )
+            except Exception as e:
+                st.warning(f"Optimized structure could not be solved: {e}")
+
+
