@@ -212,16 +212,14 @@ else:
 
     c1, c2 = st.columns(2)
 
-    with c1:
-        st.subheader("Originale Struktur")
-        st.pyplot(plot_original(struct, show_nodes=False), clear_figure=True)
-
-    with c2:
-        st.subheader("Deformierte Struktur (Skalierung = 1)")
-        if disp is not None:
-            st.pyplot(plot_deformed(struct, disp, scale=SCALE, show_nodes=False), clear_figure=True)
-        else:
-            st.warning("No displacement solution available for deformed plot.")
+    st.subheader("Originale Struktur")
+    st.pyplot(plot_original(struct, show_nodes=False), clear_figure=True)
+    
+    st.subheader("Deformierte Struktur (Skalierung = 1)")
+    if disp is not None:
+        st.pyplot(plot_deformed(struct, disp, scale=SCALE, show_nodes=False), clear_figure=True)
+    else:
+        st.warning("No displacement solution available for deformed plot.")
 
     st.markdown("---")
     st.subheader("Kennzahlen")
@@ -238,19 +236,17 @@ else:
         c3, c4 = st.columns(2)
 
         # Plot optimized geometry
-        with c3:
-            st.pyplot(plot_optimized(opt_struct, show_nodes=False), clear_figure=True)
+        st.pyplot(plot_optimized(opt_struct, show_nodes=False), clear_figure=True)
 
         # Solve and plot deformation of optimized structure
-        with c4:
-            st.subheader("Deformation (optimiert, Skalierung = 1)")
-            try:
-                _, opt_disp = solve_displacements(opt_struct)
-                st.pyplot(
-                    plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False),
-                    clear_figure=True
-                )
-            except Exception as e:
-                st.warning(f"Optimized structure could not be solved: {e}")
+        st.subheader("Deformation (optimiert, Skalierung = 1)")
+        try:
+            _, opt_disp = solve_displacements(opt_struct)
+            st.pyplot(
+                plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False),
+                clear_figure=True
+            )
+        except Exception as e:
+            st.warning(f"Optimized structure could not be solved: {e}")
 
 
