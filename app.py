@@ -111,8 +111,60 @@ if "support_nodes" not in st.session_state:
 
 
 with st.sidebar:
-    st.header("Grid (x-z)")
-    st.write("Anzahl der Knoten: ")
+    #gespeicherte laden
+    st.header("Gespeicherte Strukturen")
+
+    saved_structs = Structure.list_all()
+
+    if saved_structs:
+        options = {name: doc_id for doc_id, name in saved_structs}
+
+        selected_name = st.selectbox(
+            "Struktur auswählen",
+            list(options.keys())
+        )
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("Laden"):
+                try:
+                    loaded = Structure.load(options[selected_name])
+                    st.session_state.struct = loaded
+                    st.session_state.disp = None
+                    st.session_state.optimized_struct = None
+                    st.success(f"Struktur '{selected_name}' geladen.")
+                except Exception as e:
+                    st.error(f"Laden fehlgeschlagen: {e}")
+
+        with col2:
+            if st.button("Löschen"):
+                try:
+                    Structure.delete(options[selected_name])
+
+                    # Falls gerade geladene Struktur gelöscht wird → zurücksetzen
+                    if (
+                        st.session_state.struct is not None
+                        and st.session_state.struct.id == options[selected_name]
+                    ):
+                        st.session_state.struct = None
+                        st.session_state.disp = None
+                        st.session_state.optimized_struct = None
+
+                    st.success(f"Struktur '{selected_name}' gelöscht.")
+                    st.rerun()  # wichtig → Dropdown aktualisieren
+
+                except Exception as e:
+                    st.error(f"Löschen fehlgeschlagen: {e}")
+
+    else:
+        st.info("Keine gespeicherten Strukturen vorhanden.")
+
+
+    #neue erstellen
+    st.markdown("---")
+    st.header("Neue Struktur")
+    st.write("Anzahl der Knoten (x-z): ")
     nx = st.number_input("Breite (x)", value=20, min_value=1)
     nz = st.number_input("Höhe (z)", value=10, min_value=1)
     #k = st.number_input("Federsteifigkeit k (h/v)", value=100.0, min_value=0.0001)
@@ -135,6 +187,26 @@ with st.sidebar:
         btn_solve = st.button("Generate + Solve")
     with colb2:
         btn_opt = st.button("Optimize")
+
+    st.markdown("---")
+    st.header("Struktur speichern")
+
+    save_name = st.text_input("Name der Struktur")
+
+    if st.button("Optimierte Struktur speichern"):
+        if st.session_state.optimized_struct is None:
+            st.warning("Keine optimierte Struktur vorhanden.")
+        elif not save_name.strip():
+            st.warning("Bitte einen Namen vergeben.")
+        else:
+            try:
+                opt_struct = st.session_state.optimized_struct
+                opt_struct.name = save_name
+                id = opt_struct.save()
+                st.success(f"Struktur '{save_name}' gespeichert.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Speichern fehlgeschlagen: {e}")
 
 
 if btn_solve:
@@ -200,7 +272,7 @@ struct = st.session_state.struct
 disp = st.session_state.disp
 
 if struct is None:
-    st.info("Links Parameter setzen und **Generate + Solve** drücken.")
+    st.info("Vorhandene Struktur laden oder neue Struktur generieren (Generate+Solve)")
 else:
     if disp is None:
         try:
@@ -212,12 +284,38 @@ else:
 
     c1, c2 = st.columns(2)
 
+    st.markdown("---")
     st.subheader("Originale Struktur:")
-    st.pyplot(plot_original(struct, show_nodes=False), clear_figure=True)
+    struct_plot = plot_original(struct, show_nodes=False)
+    st.pyplot(struct_plot, clear_figure=False)
+
+    # Save Plot as PNG
+    struct_png = save_plot(struct_plot)
+
+    # Download File in Browser
+    st.download_button(
+        label="herunterladen (.png)",
+        data=struct_png,
+        file_name="original_geometry.png",
+        mime="image/png" #File-Type
+    )
     
+    st.markdown("---")
     st.subheader("Deformierte Struktur:")
     if disp is not None:
-        st.pyplot(plot_deformed(struct, disp, scale=SCALE, show_nodes=False), clear_figure=True)
+        def_plot = plot_deformed(struct, disp, scale=SCALE, show_nodes=False)
+        st.pyplot(def_plot, clear_figure=False)
+
+        # Save Plot as PNG
+        def_png = save_plot(def_plot)
+
+        # Download File in Browser
+        st.download_button(
+            label="herunterladen (.png)",
+            data=def_png,
+            file_name="deformed_geometry.png",
+            mime="image/png" #File-Type
+        )
     else:
         st.warning("No displacement solution available for deformed plot.")
 
@@ -244,19 +342,29 @@ else:
 
         # Download File in Browser
         st.download_button(
-            label="Geometrie herunterladen (.png)",
+            label="herunterladen (.png)",
             data=opt_png,
             file_name="optimized_geometry.png",
             mime="image/png" #File-Type
         )
 
         # Solve and plot deformation of optimized structure
+        st.markdown("---")
         st.subheader("Deformierte optimierte Struktur:")
         try:
             _, opt_disp = solve_displacements(opt_struct)
-            st.pyplot(
-                plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False),
-                clear_figure=True
+            opt_def_plot = plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False) 
+            st.pyplot(opt_def_plot, clear_figure=False)
+
+            # Save Plot as PNG
+            opt_def_png = save_plot(opt_def_plot)
+
+            # Download File in Browser
+            st.download_button(
+                label="herunterladen (.png)",
+                data=opt_def_png,
+                file_name="optimized_deformed_geometry.png",
+                mime="image/png" #File-Type
             )
         except Exception as e:
             st.warning(f"Optimized structure could not be solved: {e}")
@@ -266,5 +374,13 @@ else:
         st.write(f"Knoten: {len(opt_struct.nodes)}")
         st.write(f"Federn: {len(opt_struct.springs)}")
         st.write(f"Masse (einfach): {opt_struct.total_mass():.2f}")
+
+        st.markdown("---")
+        if st.button("Optimierte Struktur in Datenbank speichern"):
+            try:
+                id = opt_struct.save()
+                st.success(f"Optimierte Struktur gespeichert (id={id})")
+            except Exception as e:
+                st.error(f"Speichern fehlgeschlagen: {e}")
 
 

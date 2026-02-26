@@ -86,6 +86,6 @@ def plot_optimized(struct: Structure, show_nodes: bool = False):
 def save_plot(fig: Figure) -> BytesIO: 
     """ Zwischenspeicherung eines Plots im RAM um Datei danach zum Download bereitzustellen """
     buf = BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight")
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=300)
     buf.seek(0)
     return buf
