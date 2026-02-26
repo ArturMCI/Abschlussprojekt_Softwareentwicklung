@@ -111,6 +111,33 @@ if "support_nodes" not in st.session_state:
 
 
 with st.sidebar:
+    #gespeicherte laden
+    st.header("Gespeicherte Strukturen")
+
+    saved_structs = Structure.list_all()
+
+    if saved_structs:
+        options = {name: id for id, name in saved_structs}
+        selected_name = st.selectbox(
+            "Struktur auswählen",
+            list(options.keys())
+        )
+
+        if st.button("Struktur laden"):
+            try:
+                loaded = Structure.load(options[selected_name])
+                st.session_state.struct = loaded
+                st.session_state.disp = None
+                st.session_state.optimized_struct = None
+                st.success(f"Struktur '{selected_name}' geladen.")
+            except Exception as e:
+                st.error(f"Laden fehlgeschlagen: {e}")
+    else:
+        st.info("Keine gespeicherten Strukturen vorhanden.")
+
+    st.markdown("---")
+
+    #neue erstellen
     st.header("Grid (x-z)")
     st.write("Anzahl der Knoten: ")
     nx = st.number_input("Breite (x)", value=20, min_value=1)
@@ -135,6 +162,25 @@ with st.sidebar:
         btn_solve = st.button("Generate + Solve")
     with colb2:
         btn_opt = st.button("Optimize")
+
+    st.markdown("---")
+    st.header("Struktur speichern")
+
+    save_name = st.text_input("Name der Struktur")
+
+    if st.button("Optimierte Struktur speichern"):
+        if st.session_state.optimized_struct is None:
+            st.warning("Keine optimierte Struktur vorhanden.")
+        elif not save_name.strip():
+            st.warning("Bitte einen Namen vergeben.")
+        else:
+            try:
+                opt_struct = st.session_state.optimized_struct
+                opt_struct.name = save_name
+                id = opt_struct.save()
+                st.success(f"Struktur '{save_name}' gespeichert.")
+            except Exception as e:
+                st.error(f"Speichern fehlgeschlagen: {e}")
 
 
 if btn_solve:
@@ -302,5 +348,13 @@ else:
         st.write(f"Knoten: {len(opt_struct.nodes)}")
         st.write(f"Federn: {len(opt_struct.springs)}")
         st.write(f"Masse (einfach): {opt_struct.total_mass():.2f}")
+
+        st.markdown("---")
+        if st.button("Optimierte Struktur in Datenbank speichern"):
+            try:
+                id = opt_struct.save()
+                st.success(f"Optimierte Struktur gespeichert (id={id})")
+            except Exception as e:
+                st.error(f"Speichern fehlgeschlagen: {e}")
 
 

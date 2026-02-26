@@ -1,5 +1,6 @@
-from dataclasses import dataclass
-
+from dataclasses import dataclass, asdict
+from tinydb import TinyDB
+import os
 
 @dataclass
 class Node:
@@ -12,6 +13,14 @@ class Node:
     fz: float = 0.0
     mass: float = 1.0
 
+    def to_dict(self):
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(**data)
+
+
 
 @dataclass
 class Spring:
@@ -19,11 +28,23 @@ class Spring:
     j: int  # node id
     k: float
 
+    def to_dict(self):
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(**data)
+
 
 class Structure:
-    def __init__(self, nodes: dict[int, Node], springs: list[Spring]):
+
+    db = TinyDB(os.path.join(os.path.dirname(os.path.abspath(__file__)), "database.json")).table("structures")
+
+    def __init__(self, nodes: dict[int, Node], springs: list[Spring], name: str = "Unnamed"):
         self.nodes = nodes
         self.springs = springs
+        self.name = name
+        self.id = None
 
     def node_ids_sorted(self) -> list[int]:
         return sorted(self.nodes.keys())
@@ -51,3 +72,39 @@ class Structure:
                 adj[s.i].add(s.j)
                 adj[s.j].add(s.i)
         return adj
+    
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "nodes": {nid: node.__dict__ for nid, node in self.nodes.items()},
+            "springs": [spring.__dict__ for spring in self.springs],
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        nodes = {int(nid): Node(**nd) for nid, nd in data["nodes"].items()}
+        springs = [Spring(**sd) for sd in data["springs"]]
+        return cls(nodes, springs, name=data.get("name", "Unnamed"))
+    
+    @classmethod
+    def list_all(cls):
+        return [(doc.doc_id, doc["name"]) for doc in cls.db.all()]
+
+
+    def save(self):
+        if self.id is None:
+            self.id = self.db.insert(self.to_dict())
+        else:
+            self.db.update(self.to_dict(), doc_ids=[self.id])
+        return self.id
+
+
+    @classmethod
+    def load(cls, id: int):
+        data = cls.db.get(doc_id=id)
+        if data is None:
+            raise ValueError(f"Keine Structure mit id {id} gefunden.")
+
+        structure = cls.from_dict(data)
+        structure.id = id
+        return structure
