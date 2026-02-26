@@ -155,3 +155,9 @@ def plot_optimized_fast_nodes(struct: Structure, supports=None, load=None):
     ax.set_title("Optimized (nodes only)")
     ax.legend(loc="best")
     return fig
+def save_plot(fig: Figure) -> BytesIO: 
+    """ Zwischenspeicherung eines Plots im RAM um Datei danach zum Download bereitzustellen """
+    buf = BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=300)
+    buf.seek(0)
+    return buf
