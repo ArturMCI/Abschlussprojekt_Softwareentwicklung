@@ -105,9 +105,11 @@ pip list
 
 In der Liste sollten unter anderem folgende Pakete erscheinen:
 
--   numpy\
--   matplotlib\
+-   numpy
+-   matplotlib
 -   streamlit
+-   scipy
+-   tindb
 
 ------------------------------------------------------------------------
 
@@ -166,10 +168,12 @@ Die Anwendung öffnet sich anschließend automatisch im Browser.
 
 ## Verwendete Technologien
 
--   Python\
--   NumPy (lineare Algebra)\
--   Matplotlib (Visualisierung)\
+-   Python
+-   NumPy (lineare Algebra)
+-   Matplotlib (Visualisierung)
 -   Streamlit (Web-Interface)
+-   Tinydb (Datenbank)
+-   Scipy
 
 ------------------------------------------------------------------------
 
