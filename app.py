@@ -212,12 +212,38 @@ else:
 
     c1, c2 = st.columns(2)
 
+    st.markdown("---")
     st.subheader("Originale Struktur:")
-    st.pyplot(plot_original(struct, show_nodes=False), clear_figure=True)
+    struct_plot = plot_original(struct, show_nodes=False)
+    st.pyplot(struct_plot, clear_figure=False)
+
+    # Save Plot as PNG
+    struct_png = save_plot(struct_plot)
+
+    # Download File in Browser
+    st.download_button(
+        label="herunterladen (.png)",
+        data=struct_png,
+        file_name="original_geometry.png",
+        mime="image/png" #File-Type
+    )
     
+    st.markdown("---")
     st.subheader("Deformierte Struktur:")
     if disp is not None:
-        st.pyplot(plot_deformed(struct, disp, scale=SCALE, show_nodes=False), clear_figure=True)
+        def_plot = plot_deformed(struct, disp, scale=SCALE, show_nodes=False)
+        st.pyplot(def_plot, clear_figure=False)
+
+        # Save Plot as PNG
+        def_png = save_plot(def_plot)
+
+        # Download File in Browser
+        st.download_button(
+            label="herunterladen (.png)",
+            data=def_png,
+            file_name="deformed_geometry.png",
+            mime="image/png" #File-Type
+        )
     else:
         st.warning("No displacement solution available for deformed plot.")
 
@@ -244,19 +270,29 @@ else:
 
         # Download File in Browser
         st.download_button(
-            label="Geometrie herunterladen (.png)",
+            label="herunterladen (.png)",
             data=opt_png,
             file_name="optimized_geometry.png",
             mime="image/png" #File-Type
         )
 
         # Solve and plot deformation of optimized structure
+        st.markdown("---")
         st.subheader("Deformierte optimierte Struktur:")
         try:
             _, opt_disp = solve_displacements(opt_struct)
-            st.pyplot(
-                plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False),
-                clear_figure=True
+            opt_def_plot = plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False) 
+            st.pyplot(opt_def_plot, clear_figure=False)
+
+            # Save Plot as PNG
+            opt_def_png = save_plot(opt_def_plot)
+
+            # Download File in Browser
+            st.download_button(
+                label="herunterladen (.png)",
+                data=opt_def_png,
+                file_name="optimized_deformed_geometry.png",
+                mime="image/png" #File-Type
             )
         except Exception as e:
             st.warning(f"Optimized structure could not be solved: {e}")
