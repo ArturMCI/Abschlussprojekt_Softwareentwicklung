@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
-
+from matplotlib.figure import Figure
+from io import BytesIO
 from src.model import Structure
 
 
@@ -21,7 +22,7 @@ def plot_original(struct: Structure, show_nodes: bool = False):
     ax.invert_yaxis()  # Ursprung links oben, z nach unten
     ax.set_xlabel("x")
     ax.set_ylabel("z")
-    ax.set_title("Original")
+    ax.set_title("Original Structure")
 
     # für Darstellung, die bei 1 beginnt (Koordinaten beginnen bei 0 eigentlich)
     ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: f"{int(x+1)}"))
@@ -51,9 +52,40 @@ def plot_deformed(struct: Structure, disp: dict[int, tuple[float, float]], scale
     ax.invert_yaxis()
     ax.set_xlabel("x")
     ax.set_ylabel("z")
-    ax.set_title("Deformed")
+    ax.set_title("Deformed Structure")
 
     # für Darstellung, die bei 1 beginnt (Koordinaten beginnen bei 0 eigentlich)
     ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: f"{int(x+1)}"))
     ax.yaxis.set_major_formatter(FuncFormatter(lambda y, pos: f"{int(y+1)}"))
     return fig
+
+def plot_optimized(struct: Structure, show_nodes: bool = False):
+    fig, ax = plt.subplots()
+
+    for sp in struct.springs:
+        ni = struct.nodes[sp.i]
+        nj = struct.nodes[sp.j]
+        ax.plot([ni.x, nj.x], [ni.z, nj.z])
+
+    if show_nodes:
+        xs = [n.x for n in struct.nodes.values()]
+        zs = [n.z for n in struct.nodes.values()]
+        ax.scatter(xs, zs)
+
+    ax.set_aspect("equal", adjustable="box")
+    ax.invert_yaxis()  # Ursprung links oben, z nach unten
+    ax.set_xlabel("x")
+    ax.set_ylabel("z")
+    ax.set_title("Optimized Structure")
+
+    # für Darstellung, die bei 1 beginnt (Koordinaten beginnen bei 0 eigentlich)
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, pos: f"{int(x+1)}"))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda y, pos: f"{int(y+1)}"))
+    return fig
+
+def save_plot(fig: Figure) -> BytesIO: 
+    """ Zwischenspeicherung eines Plots im RAM um Datei danach zum Download bereitzustellen """
+    buf = BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight")
+    buf.seek(0)
+    return buf

@@ -3,7 +3,7 @@ import streamlit as st
 
 from src.model import Node, Spring, Structure
 from src.solver import solve_displacements
-from src.viz import plot_original, plot_deformed
+from src.viz import plot_original, plot_deformed, plot_optimized, save_plot
 from src.optimizer import optimize_until_target
 
 
@@ -236,7 +236,19 @@ else:
         c3, c4 = st.columns(2)
 
         # Plot optimized geometry
-        st.pyplot(plot_original(opt_struct, show_nodes=False), clear_figure=True)
+        opt_plot = plot_optimized(opt_struct, show_nodes=False)
+        st.pyplot(opt_plot, clear_figure=False)
+
+        # Save Plot as PNG
+        opt_png = save_plot(opt_plot)
+
+        # Download File in Browser
+        st.download_button(
+            label="Geometrie herunterladen (.png)",
+            data=opt_png,
+            file_name="optimized_geometry.png",
+            mime="image/png" #File-Type
+        )
 
         # Solve and plot deformation of optimized structure
         st.subheader("Deformierte optimierte Struktur:")
