@@ -108,3 +108,7 @@ class Structure:
         structure = cls.from_dict(data)
         structure.id = id
         return structure
+    
+    @classmethod
+    def delete(cls, id: int):
+        cls.db.remove(doc_ids=[id])

@@ -117,29 +117,54 @@ with st.sidebar:
     saved_structs = Structure.list_all()
 
     if saved_structs:
-        options = {name: id for id, name in saved_structs}
+        options = {name: doc_id for doc_id, name in saved_structs}
+
         selected_name = st.selectbox(
             "Struktur auswählen",
             list(options.keys())
         )
 
-        if st.button("Struktur laden"):
-            try:
-                loaded = Structure.load(options[selected_name])
-                st.session_state.struct = loaded
-                st.session_state.disp = None
-                st.session_state.optimized_struct = None
-                st.success(f"Struktur '{selected_name}' geladen.")
-            except Exception as e:
-                st.error(f"Laden fehlgeschlagen: {e}")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("Laden"):
+                try:
+                    loaded = Structure.load(options[selected_name])
+                    st.session_state.struct = loaded
+                    st.session_state.disp = None
+                    st.session_state.optimized_struct = None
+                    st.success(f"Struktur '{selected_name}' geladen.")
+                except Exception as e:
+                    st.error(f"Laden fehlgeschlagen: {e}")
+
+        with col2:
+            if st.button("Löschen"):
+                try:
+                    Structure.delete(options[selected_name])
+
+                    # Falls gerade geladene Struktur gelöscht wird → zurücksetzen
+                    if (
+                        st.session_state.struct is not None
+                        and st.session_state.struct.id == options[selected_name]
+                    ):
+                        st.session_state.struct = None
+                        st.session_state.disp = None
+                        st.session_state.optimized_struct = None
+
+                    st.success(f"Struktur '{selected_name}' gelöscht.")
+                    st.rerun()  # wichtig → Dropdown aktualisieren
+
+                except Exception as e:
+                    st.error(f"Löschen fehlgeschlagen: {e}")
+
     else:
         st.info("Keine gespeicherten Strukturen vorhanden.")
 
-    st.markdown("---")
 
     #neue erstellen
-    st.header("Grid (x-z)")
-    st.write("Anzahl der Knoten: ")
+    st.markdown("---")
+    st.header("Neue Struktur")
+    st.write("Anzahl der Knoten (x-z): ")
     nx = st.number_input("Breite (x)", value=20, min_value=1)
     nz = st.number_input("Höhe (z)", value=10, min_value=1)
     #k = st.number_input("Federsteifigkeit k (h/v)", value=100.0, min_value=0.0001)
@@ -179,6 +204,7 @@ with st.sidebar:
                 opt_struct.name = save_name
                 id = opt_struct.save()
                 st.success(f"Struktur '{save_name}' gespeichert.")
+                st.rerun()
             except Exception as e:
                 st.error(f"Speichern fehlgeschlagen: {e}")
 
@@ -246,7 +272,7 @@ struct = st.session_state.struct
 disp = st.session_state.disp
 
 if struct is None:
-    st.info("Links Parameter setzen und **Generate + Solve** drücken.")
+    st.info("Vorhandene Struktur laden oder neue Struktur generieren (Generate+Solve)")
 else:
     if disp is None:
         try:
