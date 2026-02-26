@@ -127,10 +127,11 @@ Die Anwendung öffnet sich anschließend automatisch im Browser.
     │
     ├── .venv/                 # Virtuelle Umgebung (nicht im Repository)
     ├── src/                   # Quellcode
-    │   ├── model.py
-    │   ├── solver.py
-    │   ├── viz.py
-    │   └── __init__.py
+    │   |-- model.py
+    │   |-- solver.py
+    │   |-- viz.py
+    |   |-- optimizer.py
+    │   |-- __init__.py
     │
     ├── app.py                 # Streamlit-Hauptanwendung
     ├── requirements.txt       # Projektabhängigkeiten
