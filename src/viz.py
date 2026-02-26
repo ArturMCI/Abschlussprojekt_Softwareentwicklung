@@ -1,15 +1,6 @@
-import io
 import matplotlib.pyplot as plt
 from src.model import Structure
-
-
-def save_plot(fig) -> bytes:
-    """Return figure as PNG bytes (for Streamlit download_button)."""
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    buf.seek(0)
-    return buf.getvalue()
+from io import BytesIO
 
 
 def _scatter_nodes(ax, struct: Structure, *, label: str = "Nodes", size: int = 12):
@@ -155,6 +146,7 @@ def plot_optimized_fast_nodes(struct: Structure, supports=None, load=None):
     ax.set_title("Optimized (nodes only)")
     ax.legend(loc="best")
     return fig
+
 def save_plot(fig: Figure) -> BytesIO: 
     """ Zwischenspeicherung eines Plots im RAM um Datei danach zum Download bereitzustellen """
     buf = BytesIO()

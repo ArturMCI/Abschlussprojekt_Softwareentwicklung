@@ -121,7 +121,6 @@ def _use_nodes_only(struct: Structure, plot_mode: str) -> bool:
         return False
     return _should_fast_plot_auto(struct)
 
-
 # Session state
 if "struct" not in st.session_state:
     st.session_state.struct = None
@@ -138,13 +137,6 @@ if "plot_mode" not in st.session_state:
 
 
 with st.sidebar:
-    st.header("Grid (x-z)")
-    st.write("Anzahl der Knoten: ")
-    nx = st.number_input("Breite (x)", value=20, min_value=2)
-    nz = st.number_input("Höhe (z)", value=10, min_value=2)
-
-    k = 100.0
-    st.caption("Federsteifigkeit k ist fix: 100")
     #gespeicherte laden
     st.header("Gespeicherte Strukturen")
 
@@ -201,6 +193,8 @@ with st.sidebar:
     st.write("Anzahl der Knoten (x-z): ")
     nx = st.number_input("Breite (x)", value=20, min_value=1)
     nz = st.number_input("Höhe (z)", value=10, min_value=1)
+    k = 100.0
+    st.caption("Federsteifigkeit k ist fix: 100")
     #k = st.number_input("Federsteifigkeit k (h/v)", value=100.0, min_value=0.0001)
 
     st.header("Randbedingungen (MBB)")
@@ -235,6 +229,7 @@ with st.sidebar:
 
     save_name = st.text_input("Name der Struktur")
 
+    # Struktur speichern
     if st.button("Optimierte Struktur speichern"):
         if st.session_state.optimized_struct is None:
             st.warning("Keine optimierte Struktur vorhanden.")
@@ -346,25 +341,16 @@ else:
             st.error(f"Solver failed: {e}")
             disp = None
 
+    st.markdown("---")
     st.subheader("Originale Struktur:")
     if _use_nodes_only(struct, plot_mode):
         if plot_mode == "Auto" and _should_fast_plot_auto(struct):
             st.caption("Auto: großes Grid erkannt → Nodes only aktiviert.")
-        st.pyplot(plot_original_fast_nodes(struct, supports=supports, load=load), clear_figure=True)
+        struct_plot = plot_original_fast_nodes(struct, supports=supports, load=load)
     else:
-        st.pyplot(plot_original(struct, show_nodes=False), clear_figure=True)
+        struct_plot = plot_original(struct, show_nodes=False)
 
-    st.subheader("Deformierte Struktur:")
-    if disp is not None:
-        if _use_nodes_only(struct, plot_mode):
-            st.pyplot(plot_deformed_fast_nodes(struct, disp, scale=SCALE, supports=supports, load=load), clear_figure=True)
-        else:
-            st.pyplot(plot_deformed(struct, disp, scale=SCALE, show_nodes=False), clear_figure=True)
-    c1, c2 = st.columns(2)
-
-    st.markdown("---")
-    st.subheader("Originale Struktur:")
-    struct_plot = plot_original(struct, show_nodes=False)
+    # plot originale Struktur
     st.pyplot(struct_plot, clear_figure=False)
 
     # Save Plot as PNG
@@ -380,9 +366,16 @@ else:
     
     st.markdown("---")
     st.subheader("Deformierte Struktur:")
+
     if disp is not None:
-        def_plot = plot_deformed(struct, disp, scale=SCALE, show_nodes=False)
+        if _use_nodes_only(struct, plot_mode):
+            def_plot = plot_deformed_fast_nodes(struct, disp, scale=SCALE, supports=supports, load=load)
+        else:
+            def_plot = plot_deformed(struct, disp, scale=SCALE, show_nodes=False)
+
+        # plot deformed originale Struktur
         st.pyplot(def_plot, clear_figure=False)
+        c1, c2 = st.columns(2)
 
         # Save Plot as PNG
         def_png = save_plot(def_plot)
@@ -424,19 +417,16 @@ else:
             mime="image/png"
         )
 
-        st.subheader("Deformierte optimierte Struktur:")
-        try:
-            _, opt_disp = solve_displacements(opt_struct)
-            if _use_nodes_only(opt_struct, plot_mode):
-                st.pyplot(plot_deformed_fast_nodes(opt_struct, opt_disp, scale=SCALE, supports=supports, load=load), clear_figure=True)
-            else:
-                st.pyplot(plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False), clear_figure=True)
-        # Solve and plot deformation of optimized structure
+         # Solve and plot deformation of optimized structure
         st.markdown("---")
         st.subheader("Deformierte optimierte Struktur:")
         try:
             _, opt_disp = solve_displacements(opt_struct)
-            opt_def_plot = plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False) 
+            if _use_nodes_only(opt_struct, plot_mode):
+                opt_def_plot = plot_deformed_fast_nodes(opt_struct, opt_disp, scale=SCALE, supports=supports, load=load)
+            else:
+                opt_def_plot = plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False)
+            
             st.pyplot(opt_def_plot, clear_figure=False)
 
             # Save Plot as PNG
@@ -449,22 +439,15 @@ else:
                 file_name="optimized_deformed_geometry.png",
                 mime="image/png" #File-Type
             )
-        except Exception as e:
-            st.warning(f"Optimized structure could not be solved: {e}")
 
+        except Exception as e:
+            st.error(f"Fehler bei der Berechnung der optimierten Verformung: {e}")
+       
         st.markdown("---")
         st.subheader("Kennzahlen")
         st.write(f"Knoten: {len(opt_struct.nodes)}")
         st.write(f"Federn: {len(opt_struct.springs)}")
         st.write(f"Masse (einfach): {opt_struct.total_mass():.2f}")
         st.write(f"Masse (einfach): {opt_struct.total_mass():.2f}")
-
-        st.markdown("---")
-        if st.button("Optimierte Struktur in Datenbank speichern"):
-            try:
-                id = opt_struct.save()
-                st.success(f"Optimierte Struktur gespeichert (id={id})")
-            except Exception as e:
-                st.error(f"Speichern fehlgeschlagen: {e}")
 
 
