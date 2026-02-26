@@ -191,8 +191,8 @@ with st.sidebar:
     st.markdown("---")
     st.header("Neue Struktur")
     st.write("Anzahl der Knoten (x-z): ")
-    nx = st.number_input("Breite (x)", value=20, min_value=1)
-    nz = st.number_input("Höhe (z)", value=10, min_value=1)
+    nx = st.number_input("Breite (x)", value=100, min_value=1)
+    nz = st.number_input("Höhe (z)", value=30, min_value=1)
     k = 100.0
     st.caption("Federsteifigkeit k ist fix: 100")
     #k = st.number_input("Federsteifigkeit k (h/v)", value=100.0, min_value=0.0001)
@@ -204,7 +204,7 @@ with st.sidebar:
     st.header("Kraft (nur z-Richtung)")
     fi = st.slider("Kraft-Knoten i (x-index)", 0, nx - 1, nx // 2)
     fj = st.slider("Kraft-Knoten j (z-index)", 0, nz - 1, 0)
-    fz = st.number_input("Fz (z nach unten → nach unten meist +)", value=10.0)
+    fz = st.number_input("Fz (z nach unten → nach unten meist +)", value=50.0)
 
     st.header("Darstellung")
     plot_mode = st.selectbox(
@@ -394,7 +394,7 @@ else:
     st.subheader("Kennzahlen")
     st.write(f"Knoten: {len(struct.nodes)}")
     st.write(f"Federn: {len(struct.springs)}")
-    st.write(f"Masse (einfach): {struct.total_mass():.2f}")
+    st.write(f"Masse: {struct.total_mass():.2f}")
 
     if st.session_state.optimized_struct is not None:
         opt_struct = st.session_state.optimized_struct
@@ -447,7 +447,6 @@ else:
         st.subheader("Kennzahlen")
         st.write(f"Knoten: {len(opt_struct.nodes)}")
         st.write(f"Federn: {len(opt_struct.springs)}")
-        st.write(f"Masse (einfach): {opt_struct.total_mass():.2f}")
-        st.write(f"Masse (einfach): {opt_struct.total_mass():.2f}")
+        st.write(f"Masse: {opt_struct.total_mass():.2f}")
 
 

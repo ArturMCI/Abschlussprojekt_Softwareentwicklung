@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from src.model import Structure
 from io import BytesIO
 
