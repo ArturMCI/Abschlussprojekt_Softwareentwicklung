@@ -165,7 +165,6 @@ Die Anwendung öffnet sich anschließend automatisch im Browser.
 
 ## Autor:innen
 
-Artur Surberg
-Julian Köll
+Artur Surberg und Julian Köll
 
 Projekt im Rahmen des Moduls Softwaredesign.
