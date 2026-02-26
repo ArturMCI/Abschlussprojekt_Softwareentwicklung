@@ -1,10 +1,11 @@
 import numpy as np
 from src.model import Structure
 
+import warnings
+
 try:
-    from scipy.sparse import coo_matrix
+    from scipy.sparse import coo_matrix, identity
     from scipy.sparse.linalg import spsolve, MatrixRankWarning
-    import warnings
     _HAS_SCIPY = True
 except Exception:
     _HAS_SCIPY = False
@@ -20,10 +21,10 @@ def _spring_element_matrix(xi: float, zi: float, xj: float, zj: float, k: float)
     s = dz / L
     return float(k) * np.array(
         [
-            [ c*c,  c*s, -c*c, -c*s],
-            [ c*s,  s*s, -c*s, -s*s],
-            [-c*c, -c*s,  c*c,  c*s],
-            [-c*s, -s*s,  c*s,  s*s],
+            [c * c, c * s, -c * c, -c * s],
+            [c * s, s * s, -c * s, -s * s],
+            [-c * c, -c * s, c * c, c * s],
+            [-c * s, -s * s, c * s, s * s],
         ],
         dtype=float,
     )
@@ -90,8 +91,33 @@ def assemble_K_F_dense(struct: Structure):
     return K, F, id2pos
 
 
+def _choose_eps_from_diag(diag, base: float = 1e-9) -> float:
+    """
+    Skalenrobuste Regularisierung:
+    eps = base * mean(|diag|), fallback base wenn diag ~ 0.
+    """
+    diag = np.asarray(diag, dtype=float)
+    m = float(np.mean(np.abs(diag))) if diag.size else 0.0
+    if (not np.isfinite(m)) or (m <= 0.0):
+        return float(base)
+    return float(base * m)
+
+
+def _regularize_sparse(K_ff, eps: float):
+    n = K_ff.shape[0]
+    return K_ff + eps * identity(n, format="csr")
+
+
+def _regularize_dense(K_ff: np.ndarray, eps: float) -> np.ndarray:
+    K2 = K_ff.copy()
+    n = K2.shape[0]
+    K2[np.arange(n), np.arange(n)] += eps
+    return K2
+
+
 def solve_displacements(struct: Structure):
     id2pos = struct.id_to_pos()
+
     fixed = []
     for nid, node in struct.nodes.items():
         p = id2pos[nid]
@@ -115,15 +141,23 @@ def solve_displacements(struct: Structure):
         K_ff = K[free][:, free]
         F_f = F[free]
 
-        # Turn "Matrix is exactly singular" into a hard error
+        eps = _choose_eps_from_diag(K_ff.diagonal(), base=1e-9)
+
+        # 1) Normal versuchen, 2) bei Singularität/Problemen regularisiert retry
         with warnings.catch_warnings():
             warnings.simplefilter("error", MatrixRankWarning)
             try:
                 u_f = spsolve(K_ff, F_f)
-            except MatrixRankWarning as e:
-                raise np.linalg.LinAlgError("System not solvable (exactly singular).") from e
-            except Exception as e:
-                raise np.linalg.LinAlgError("System not solvable (solver error).") from e
+            except MatrixRankWarning:
+                K_reg = _regularize_sparse(K_ff, eps)
+                u_f = spsolve(K_reg, F_f)
+            except Exception:
+                # Optionaler Retry auch bei sonstigen Solver-Problemen
+                try:
+                    K_reg = _regularize_sparse(K_ff, eps)
+                    u_f = spsolve(K_reg, F_f)
+                except Exception as e:
+                    raise np.linalg.LinAlgError("System not solvable (solver error).") from e
 
         u_f = np.asarray(u_f, dtype=float)
         if not np.all(np.isfinite(u_f)):
@@ -137,6 +171,7 @@ def solve_displacements(struct: Structure):
     K, F, _ = assemble_K_F_dense(struct)
     Kb = K.copy()
     Fb = F.copy()
+
     for dof in fixed:
         Kb[dof, :] = 0.0
         Kb[:, dof] = 0.0
@@ -145,8 +180,14 @@ def solve_displacements(struct: Structure):
 
     try:
         u = np.linalg.solve(Kb, Fb)
-    except np.linalg.LinAlgError as e:
-        raise np.linalg.LinAlgError("System not solvable (singular).") from e
+    except np.linalg.LinAlgError:
+        # Retry mit Regularisierung
+        eps = _choose_eps_from_diag(np.diag(Kb), base=1e-9)
+        Kb_reg = _regularize_dense(Kb, eps)
+        try:
+            u = np.linalg.solve(Kb_reg, Fb)
+        except np.linalg.LinAlgError as e:
+            raise np.linalg.LinAlgError("System not solvable (singular even after regularization).") from e
 
     if not np.all(np.isfinite(u)):
         raise np.linalg.LinAlgError("System not solvable (NaN/Inf in solution).")
