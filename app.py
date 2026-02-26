@@ -249,4 +249,10 @@ else:
         except Exception as e:
             st.warning(f"Optimized structure could not be solved: {e}")
 
+        st.markdown("---")
+        st.subheader("Kennzahlen")
+        st.write(f"Knoten: {len(opt_struct.nodes)}")
+        st.write(f"Federn: {len(opt_struct.springs)}")
+        st.write(f"Masse (einfach): {opt_struct.total_mass():.2f}")
+
 
