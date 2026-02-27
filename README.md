@@ -73,6 +73,46 @@ abschlussprojekt/
 
 ---
 
+# Softwarearchitektur
+
+Die Anwendung ist modular in mehrere Schichten unterteilt:
+
+## 1. Modellschicht
+`model.py`
+
+- Definition der Klassen Node, Spring und Structure
+- Verwaltung der Datenstruktur
+- Speicherung und Laden über TinyDB
+
+## 2. Berechnungsschicht
+`solver.py`, `optimizer.py`
+
+- Aufbau und Lösung der globalen Steifigkeitsmatrix
+- Berechnung der Verformungsenergie
+- Topologieoptimierung
+- Konnektivitätsprüfung
+
+## 3. Darstellungsschicht
+`viz.py`
+
+- Visualisierung der Struktur
+- Heatmap-Darstellung
+- Performance-optimierte Plot-Modi
+- PNG-Export und GIF-Erstellung
+
+## 4. UI-Schicht
+`app.py`
+
+- Streamlit-Webinterface
+- Benutzerinteraktion
+- Steuerung von Solver und Optimizer
+- Fortschrittsanzeige
+- Download-Funktionen
+
+Diese klare Trennung erhöht Wartbarkeit, Erweiterbarkeit und Nachvollziehbarkeit des Projekts.
+
+---
+
 ## Erklärung der einzelnen Python-Dateien
 
 ### `app.py`
@@ -197,6 +237,67 @@ Warum wichtig?
 
 ---
 
+# Mathematische Grundlagen
+
+## Modellierung als lineares Federsystem
+
+Die Struktur wird als System aus Massenpunkten (Knoten) und linearen elastischen Federn modelliert.  
+Jeder Knoten besitzt zwei Freiheitsgrade:
+
+- Horizontale Verschiebung \( u_x \)
+- Vertikale Verschiebung \( u_z \)
+
+Federn wirken ausschließlich entlang ihrer Verbindungsrichtung.
+
+---
+
+## Globale Steifigkeitsmatrix
+
+Für jede Feder wird eine lokale Steifigkeitsmatrix berechnet.  
+Durch Superposition aller Beiträge entsteht die **globale Steifigkeitsmatrix K**.
+
+Nach Anbringen der Randbedingungen ergibt sich das lineare Gleichungssystem:
+
+\[
+K \cdot u = F
+\]
+
+wobei:
+
+- \(K\) = globale Steifigkeitsmatrix  
+- \(u\) = Verschiebungsvektor  
+- \(F\) = Kraftvektor  
+
+Das System wird numerisch gelöst (sparse oder dense).
+
+---
+
+## Verformungsenergie
+
+Die in einer Feder gespeicherte Energie ergibt sich aus:
+
+\[
+E = \frac{1}{2} k (\Delta L)^2
+\]
+
+Federn mit geringer gespeicherter Energie tragen wenig zur Gesamtsteifigkeit bei.
+
+---
+
+## Optimierungskriterium
+
+Die Verformungsenergie jeder Feder wird berechnet und gleichmäßig auf ihre beiden Endknoten verteilt.
+
+Knoten mit geringer Gesamtenergie werden als weniger relevant für die strukturelle Steifigkeit betrachtet und im Optimierungsprozess entfernt.
+
+Vor dem endgültigen Entfernen wird überprüft:
+
+- Ob die Struktur weiterhin zusammenhängend ist
+- Ob Lasten weiterhin zu den Lagern übertragen werden können
+- Ob das System weiterhin lösbar ist
+
+---
+
 # Funktionsweise des Optimizers
 
 1. Modell initialisieren  
@@ -206,6 +307,27 @@ Warum wichtig?
 5. Schwächste Punkte entfernen  
 6. Neue Masse berechnen  
 7. Wiederholen bis Soll-Masse erreicht  
+
+---
+
+# Erfüllung der Minimalanforderungen
+
+| Minimalanforderung | Umsetzung im Projekt |
+|--------------------|----------------------|
+| Web-UI mit Streamlit | `app.py` |
+| Frei definierbarer rechteckiger Bauraum | Grid-Generator (nx, nz) |
+| Randbedingungen (Loslager / Festlager) | Sidebar-Auswahl |
+| Externe Kräfte an Knoten | Sidebar (Fz) |
+| Lösung von K · u = F | `solver.py` |
+| Topologieoptimierung | `optimizer.py` |
+| Visualisierung vor / während / nach Optimierung | `viz.py` |
+| Struktur speicherbar & ladbar | TinyDB (`database.json`) |
+| Download der optimierten Geometrie | PNG-Export |
+| Test am MBB-Balken | Dokumentierte Beispielstrukturen |
+| Verifikation, dass Struktur nicht auseinanderfällt | Connectivity-Check im Optimierer |
+| Deployment mit Streamlit | Lokaler Start via `streamlit run app.py` |
+
+Damit werden alle in der Aufgabenstellung definierten Minimalanforderungen erfüllt.
 
 ---
 
