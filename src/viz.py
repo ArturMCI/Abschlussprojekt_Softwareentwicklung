@@ -1,5 +1,8 @@
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from matplotlib.collections import LineCollection
+import matplotlib.colors as colors
 from src.model import Structure
 from io import BytesIO
 
@@ -154,3 +157,45 @@ def save_plot(fig: Figure) -> BytesIO:
     fig.savefig(buf, format="png", bbox_inches="tight", dpi=300)
     buf.seek(0)
     return buf
+
+def plot_heatmap(struct: Structure, disp: dict, spring_es, node_es, use_nodes_only: bool, scale: float = 1.0):
+    fig, ax = plt.subplots()
+    cmap = 'jet' # 'jet' oder 'viridis' sind oft besser erkennbar als 'inferno'
+    
+    # 1. Energie-Werte normalisieren (verhindert "alles schwarz")
+    # Wir kappen Ausreißer bei der 95. Perzentile, damit man mehr Details sieht
+    node_vals = np.array(list(node_es.values()))
+    vmax_node = np.percentile(node_vals, 95) if len(node_vals) > 0 else 1.0
+    
+    if use_nodes_only:
+        # DEFORMIERTE Koordinaten für Knoten
+        xs = [struct.nodes[nid].x + scale * disp[nid][0] for nid in node_es.keys()]
+        zs = [struct.nodes[nid].z + scale * disp[nid][1] for nid in node_es.keys()]
+        vals = list(node_es.values())
+        
+        sc = ax.scatter(xs, zs, c=vals, cmap=cmap, s=15, edgecolors='none', vmax=vmax_node)
+        plt.colorbar(sc, ax=ax, label="Energie (deformiert)")
+    else:
+        # DEFORMIERTE Koordinaten für Federn
+        lines = []
+        for sp in struct.springs:
+            ni, nj = struct.nodes[sp.i], struct.nodes[sp.j]
+            # Start- und Endpunkt deformieren
+            p1 = (ni.x + scale * disp[sp.i][0], ni.z + scale * disp[sp.i][1])
+            p2 = (nj.x + scale * disp[sp.j][0], nj.z + scale * disp[sp.j][1])
+            lines.append([p1, p2])
+        
+        spring_vals = np.array(spring_es)
+        vmax_spring = np.percentile(spring_vals, 95) if len(spring_vals) > 0 else 1.0
+        
+        lc = LineCollection(lines, cmap=cmap, linewidths=1.5)
+        lc.set_array(spring_vals)
+        lc.set_clim(0, vmax_spring) # Skala begrenzen
+        ax.add_collection(lc)
+        ax.autoscale()
+        plt.colorbar(lc, ax=ax, label="Energie (deformiert)")
+
+    ax.set_aspect("equal", adjustable="box")
+    ax.invert_yaxis()
+    ax.set_title("Energie-Heatmap (Deformiert)")
+    return fig

@@ -11,8 +11,9 @@ from src.viz import (
     plot_original_fast_nodes,
     plot_deformed_fast_nodes,
     plot_optimized_fast_nodes,
+    plot_heatmap
 )
-from src.optimizer import optimize_until_target
+from src.optimizer import optimize_until_target, get_energy_data
 
 
 def build_grid_structure(nx: int, nz: int, k: float) -> Structure:
@@ -134,6 +135,8 @@ if "support_nodes" not in st.session_state:
     st.session_state.support_nodes = None  # (left_id, right_id)
 if "plot_mode" not in st.session_state:
     st.session_state.plot_mode = "Auto"
+if "show_heatmap" not in st.session_state:
+    st.session_state.show_heatmap = False
 
 
 with st.sidebar:
@@ -214,6 +217,10 @@ with st.sidebar:
         help="Auto schaltet bei großen Strukturen automatisch auf Nodes only um.",
     )
     st.session_state.plot_mode = plot_mode
+
+    show_heatmap = st.checkbox("Energie-Heatmap anzeigen", value=st.session_state.show_heatmap)
+    st.session_state.show_heatmap = show_heatmap
+    
 
     st.header("Optimierung")
     target_factor = st.slider("Mass reduction factor (Zielmasse)", 0.1, 1.0, 0.5, 0.05)
@@ -368,10 +375,23 @@ else:
     st.subheader("Deformierte Struktur:")
 
     if disp is not None:
-        if _use_nodes_only(struct, plot_mode):
-            def_plot = plot_deformed_fast_nodes(struct, disp, scale=SCALE, supports=supports, load=load)
+        if show_heatmap:            
+            # Berechnungen
+            u_vec, _ = solve_displacements(struct) 
+            s_es, n_es = get_energy_data(struct, u_vec)
+            
+            # Modus bestimmen
+            nodes_only = _use_nodes_only(struct, plot_mode)
+            
+            # WICHTIG: disp und SCALE übergeben!
+            def_plot = plot_heatmap(struct, disp, s_es, n_es, nodes_only, scale=SCALE)
+
         else:
-            def_plot = plot_deformed(struct, disp, scale=SCALE, show_nodes=False)
+            if _use_nodes_only(struct, plot_mode):
+                def_plot = plot_deformed_fast_nodes(struct, disp, scale=SCALE, supports=supports, load=load)
+            else:
+                def_plot = plot_deformed(struct, disp, scale=SCALE, show_nodes=False)
+       
 
         # plot deformed originale Struktur
         st.pyplot(def_plot, clear_figure=False)
@@ -402,6 +422,7 @@ else:
         st.markdown("---")
         st.subheader("Optimierte Struktur:")
 
+        
         if _use_nodes_only(opt_struct, plot_mode):
             opt_plot = plot_optimized_fast_nodes(opt_struct, supports=supports, load=load)
         else:
@@ -422,10 +443,21 @@ else:
         st.subheader("Deformierte optimierte Struktur:")
         try:
             _, opt_disp = solve_displacements(opt_struct)
-            if _use_nodes_only(opt_struct, plot_mode):
-                opt_def_plot = plot_deformed_fast_nodes(opt_struct, opt_disp, scale=SCALE, supports=supports, load=load)
+            if show_heatmap:            
+                # Berechnungen
+                u_vec, _ = solve_displacements(opt_struct) 
+                s_es, n_es = get_energy_data(opt_struct, u_vec)
+                
+                # Modus bestimmen
+                nodes_only = _use_nodes_only(opt_struct, plot_mode)
+                
+                # WICHTIG: disp und SCALE übergeben!
+                opt_def_plot = plot_heatmap(opt_struct, disp, s_es, n_es, nodes_only, scale=SCALE)           
             else:
-                opt_def_plot = plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False)
+                if _use_nodes_only(opt_struct, plot_mode):
+                    opt_def_plot = plot_deformed_fast_nodes(opt_struct, opt_disp, scale=SCALE, supports=supports, load=load)
+                else:
+                    opt_def_plot = plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False)
             
             st.pyplot(opt_def_plot, clear_figure=False)
 
