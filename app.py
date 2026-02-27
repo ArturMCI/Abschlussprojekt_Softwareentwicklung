@@ -11,7 +11,8 @@ from src.viz import (
     plot_original_fast_nodes,
     plot_deformed_fast_nodes,
     plot_optimized_fast_nodes,
-    plot_heatmap
+    plot_heatmap,
+    create_gif_from_figures,
 )
 from src.optimizer import optimize_until_target, get_energy_data
 
@@ -137,6 +138,8 @@ if "plot_mode" not in st.session_state:
     st.session_state.plot_mode = "Auto"
 if "show_heatmap" not in st.session_state:
     st.session_state.show_heatmap = False
+if "optimization_frames" not in st.session_state:
+    st.session_state.optimization_frames = None
 
 
 with st.sidebar:
@@ -230,6 +233,8 @@ with st.sidebar:
         btn_solve = st.button("Generate + Solve")
     with colb2:
         btn_opt = st.button("Optimize")
+    
+    create_gif = st.checkbox("Optimierungsverlauf als GIF erzeugen", value=False)
 
     st.markdown("---")
     st.header("Struktur speichern")
@@ -305,14 +310,37 @@ if btn_opt:
                 f"Fortschritt: {frac*100:.1f}% | Knoten: {n_nodes}"
             )
 
+        def snapshot_callback(step, cur_struct):
+            if frames is None:
+                return
+
+            supports = st.session_state.support_nodes
+            load = st.session_state.force_node_id
+            plot_mode_local = st.session_state.plot_mode
+
+            if _use_nodes_only(cur_struct, plot_mode_local):
+                fig = plot_optimized_fast_nodes(
+                    cur_struct,
+                    supports=supports,
+                    load=load
+                )
+            else:
+                fig = plot_optimized(cur_struct, show_nodes=False)
+
+            frames.append(fig)
+
+        # Liste von Frames für GIF
+        frames = [] if create_gif else None
+
         with st.spinner("Optimizing until target mass..."):
             try:
                 opt_struct, steps, msg = optimize_until_target(
-                    struct=struct,
-                    protected=protected,
-                    target_mass=target_mass,
-                    max_steps=10_000,
-                    progress_callback=progress_callback,
+                struct=struct,
+                protected=protected,
+                target_mass=target_mass,
+                max_steps=10_000,
+                progress_callback=progress_callback,
+                snapshot_callback=snapshot_callback if create_gif else None,
                 )
             except TypeError:
                 opt_struct, steps, msg = optimize_until_target(
@@ -328,6 +356,12 @@ if btn_opt:
             st.session_state.optimized_struct = opt_struct
             progress_bar.progress(100)
             st.success(f"{msg} (Steps: {steps})")
+            if create_gif and frames:
+                gif_buffer = create_gif_from_figures(frames, duration=0.2)
+                st.session_state.optimization_frames = gif_buffer
+            else:
+                st.session_state.optimization_frames = None
+        
 
 
 struct = st.session_state.struct
@@ -480,5 +514,18 @@ else:
         st.write(f"Knoten: {len(opt_struct.nodes)}")
         st.write(f"Federn: {len(opt_struct.springs)}")
         st.write(f"Masse: {opt_struct.total_mass():.2f}")
+
+        if st.session_state.optimization_frames is not None:
+            st.markdown("---")
+            st.subheader("Optimierungsverlauf (GIF)")
+
+            st.image(st.session_state.optimization_frames)
+
+            st.download_button(
+                label="Optimierungs-GIF herunterladen",
+                data=st.session_state.optimization_frames,
+                file_name="optimization.gif",
+                mime="image/gif"
+            )
 
 

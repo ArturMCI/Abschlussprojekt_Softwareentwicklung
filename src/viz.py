@@ -5,6 +5,7 @@ from matplotlib.collections import LineCollection
 import matplotlib.colors as colors
 from src.model import Structure
 from io import BytesIO
+import imageio.v2 as imageio
 
 
 def _scatter_nodes(ax, struct: Structure, *, label: str = "Nodes", size: int = 12):
@@ -199,3 +200,23 @@ def plot_heatmap(struct: Structure, disp: dict, spring_es, node_es, use_nodes_on
     ax.invert_yaxis()
     ax.set_title("Energie-Heatmap (Deformiert)")
     return fig
+
+def create_gif_from_figures(figures: list, duration: float = 0.3) -> BytesIO:
+    """
+    Erstellt ein GIF aus einer Liste von matplotlib-Figuren.
+    duration = Zeit pro Frame in Sekunden.
+    """
+    images = []
+
+    for fig in figures:
+        buf = BytesIO()
+        fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
+        buf.seek(0)
+        images.append(imageio.imread(buf))
+        buf.close()
+        plt.close(fig)  # wichtig gegen Memory-Leak
+
+    gif_buffer = BytesIO()
+    imageio.mimsave(gif_buffer, images, format="GIF", duration=duration)
+    gif_buffer.seek(0)
+    return gif_buffer

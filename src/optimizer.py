@@ -99,6 +99,7 @@ def optimize_until_target(
     target_mass: float,
     max_steps: int = 10_000,
     progress_callback=None,
+    snapshot_callback=None,
 ) -> tuple[Structure | None, int, str]:
 
     current = _fast_snapshot(struct)
@@ -164,6 +165,9 @@ def optimize_until_target(
         
         if progress_callback:
             progress_callback(steps, current.total_mass(), target_mass, len(current.nodes))
+        
+        if snapshot_callback:
+            snapshot_callback(steps, current)
 
     # Finale Säuberung
     _prune_dead_ends(current, protected)
