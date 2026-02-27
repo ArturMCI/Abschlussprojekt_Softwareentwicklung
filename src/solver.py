@@ -167,7 +167,7 @@ def solve_displacements(struct: Structure):
         disp = {nid: (float(u[2 * p]), float(u[2 * p + 1])) for nid, p in id2pos.items()}
         return u, disp
 
-    # ---------- Dense fallback ----------
+    # Dense fallback
     K, F, _ = assemble_K_F_dense(struct)
     Kb = K.copy()
     Fb = F.copy()

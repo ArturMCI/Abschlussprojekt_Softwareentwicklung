@@ -3,8 +3,6 @@ import copy
 from src.model import Structure
 from src.solver import solve_displacements
 
-# --- Performance & Geometry Helpers ---
-
 def _get_vectorized_data(struct: Structure, id2pos: dict):
     nodes = struct.nodes
     springs = struct.springs
@@ -37,8 +35,6 @@ def _fast_snapshot(struct: Structure):
     new_struct.springs = list(struct.springs)
     return new_struct
 
-# --- Logik-Verbesserungen ---
-
 def _prune_dead_ends(struct: Structure, protected: set[int]):
     """Entfernt Knoten, die statisch nichts beitragen (Grad 0 oder 1)."""
     while True:
@@ -65,7 +61,7 @@ def _node_scores_pro(struct: Structure, energies: dict, alpha: float = 0.5) -> d
         if not neighbors:
             refined_scores[nid] = 0.0
             continue
-        # Mittelwert der Umgebung einbeziehen (verhindert Checkerboard)
+        # Mittelwert der Umgebung einbeziehen
         m = np.mean([scores.get(nb, 0.0) for nb in neighbors])
         # Bestrafung für "dünne" Stellen: Wenig Nachbarn = geringerer Score = eher weg
         degree_weight = (len(neighbors) / 4.0) ** 0.5 
@@ -91,8 +87,7 @@ def is_connectivity_ok(struct: Structure, protected: set[int]) -> bool:
     adj = struct.adjacency()
     return _dfs_check(adj, [prot_list[0]], prot_list[1:])
 
-# --- Haupt-Optimizer ---
-
+# Main-Optimierer
 def optimize_until_target(
     struct: Structure,
     protected: set[int],
@@ -131,7 +126,7 @@ def optimize_until_target(
         candidates = removable[:search_pool_size]
         
         success = False
-        # Wir versuchen erst große Batches, dann kleinere
+        # erst große Batches, dann kleinere
         batch_sizes = [max(1, int(len(current.nodes) * 0.02)), 5, 1]
         
         for b_size in batch_sizes:
@@ -142,7 +137,7 @@ def optimize_until_target(
             for nid in to_remove:
                 current.remove_node(nid)
             
-            # WICHTIG: Sofort tote Enden wegschneiden
+            # tote Enden wegschneiden
             _prune_dead_ends(current, protected)
             
             if is_connectivity_ok(current, protected):

@@ -32,7 +32,7 @@ def build_grid_structure(nx: int, nz: int, k: float) -> Structure:
         for i in range(nx):
             nodes[node_id] = Node(
                 id=node_id,
-                x=float(i),   # nur Index!
+                x=float(i),   # nur Index
                 z=float(j)
             )
             node_id += 1
@@ -66,7 +66,7 @@ def build_grid_structure(nx: int, nz: int, k: float) -> Structure:
 
 def apply_mbb_supports(struct: Structure, nx: int, nz: int, left_type: str, right_type: str) -> tuple[int, int]:
     """
-    MBB-Setup: Auflager nur unten links & unten rechts.
+    Setup: Auflager nur unten links & unten rechts.
     - Festlager: fixed_x=True, fixed_z=True
     - Loslager: fixed_x=False, fixed_z=True
     """
@@ -102,11 +102,10 @@ def apply_force_at(struct: Structure, nx: int, i: int, j: int, fz: float) -> int
 st.set_page_config(page_title="Federstruktur (x-z)", layout="wide")
 st.title("Abschlussprojekt: 2D-Topologieoptimierung")
 
-SCALE = 1.0  # keine UI-Kontrolle
+SCALE = 1.0  # Skalierungsfaktor ist immer 1
 
 
 def _should_fast_plot_auto(struct: Structure) -> bool:
-    """Auto-Schwellwert: ab hier ist Linien-Plot (Federn) in Streamlit oft zu langsam."""
     return (len(struct.springs) > 6000) or (len(struct.nodes) > 1500)
 
 
@@ -174,7 +173,7 @@ with st.sidebar:
                 try:
                     Structure.delete(options[selected_name])
 
-                    # Falls gerade geladene Struktur gelöscht wird → zurücksetzen
+                    # Falls gerade geladene Struktur gelöscht wird -> zurücksetzen
                     if (
                         st.session_state.struct is not None
                         and st.session_state.struct.id == options[selected_name]
@@ -184,7 +183,7 @@ with st.sidebar:
                         st.session_state.optimized_struct = None
 
                     st.success(f"Struktur '{selected_name}' gelöscht.")
-                    st.rerun()  # wichtig → Dropdown aktualisieren
+                    st.rerun()  # wichtig -> Dropdown aktualisieren
 
                 except Exception as e:
                     st.error(f"Löschen fehlgeschlagen: {e}")
@@ -417,7 +416,7 @@ else:
             # Modus bestimmen
             nodes_only = _use_nodes_only(struct, plot_mode)
             
-            # WICHTIG: disp und SCALE übergeben!
+            # Figure erstellen
             def_plot = plot_heatmap(struct, disp, s_es, n_es, nodes_only, scale=SCALE)
 
         else:
@@ -485,7 +484,7 @@ else:
                 # Modus bestimmen
                 nodes_only = _use_nodes_only(opt_struct, plot_mode)
                 
-                # WICHTIG: disp und SCALE übergeben!
+                # Figure erstellen
                 opt_def_plot = plot_heatmap(opt_struct, disp, s_es, n_es, nodes_only, scale=SCALE)           
             else:
                 if _use_nodes_only(opt_struct, plot_mode):

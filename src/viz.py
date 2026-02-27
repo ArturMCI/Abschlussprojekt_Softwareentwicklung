@@ -161,15 +161,14 @@ def save_plot(fig: Figure) -> BytesIO:
 
 def plot_heatmap(struct: Structure, disp: dict, spring_es, node_es, use_nodes_only: bool, scale: float = 1.0):
     fig, ax = plt.subplots()
-    cmap = 'jet' # 'jet' oder 'viridis' sind oft besser erkennbar als 'inferno'
+    cmap = 'jet' # Colormap
     
-    # 1. Energie-Werte normalisieren (verhindert "alles schwarz")
-    # Wir kappen Ausreißer bei der 95. Perzentile, damit man mehr Details sieht
+    # Energie-Werte normalisieren
     node_vals = np.array(list(node_es.values()))
     vmax_node = np.percentile(node_vals, 95) if len(node_vals) > 0 else 1.0
     
     if use_nodes_only:
-        # DEFORMIERTE Koordinaten für Knoten
+        # deformierte Koordinaten für Knoten
         xs = [struct.nodes[nid].x + scale * disp[nid][0] for nid in node_es.keys()]
         zs = [struct.nodes[nid].z + scale * disp[nid][1] for nid in node_es.keys()]
         vals = list(node_es.values())
@@ -177,7 +176,7 @@ def plot_heatmap(struct: Structure, disp: dict, spring_es, node_es, use_nodes_on
         sc = ax.scatter(xs, zs, c=vals, cmap=cmap, s=15, edgecolors='none', vmax=vmax_node)
         plt.colorbar(sc, ax=ax, label="Energie (deformiert)")
     else:
-        # DEFORMIERTE Koordinaten für Federn
+        # deformierte Koordinaten für Federn
         lines = []
         for sp in struct.springs:
             ni, nj = struct.nodes[sp.i], struct.nodes[sp.j]
@@ -214,7 +213,7 @@ def create_gif_from_figures(figures: list, duration: float = 0.3) -> BytesIO:
         buf.seek(0)
         images.append(imageio.imread(buf))
         buf.close()
-        plt.close(fig)  # wichtig gegen Memory-Leak
+        plt.close(fig)
 
     gif_buffer = BytesIO()
     imageio.mimsave(gif_buffer, images, format="GIF", duration=duration)
