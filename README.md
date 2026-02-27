@@ -57,11 +57,12 @@ abschlussprojekt/
 │
 ├── .venv/
 ├── src/
+│   ├── __init__.py
 │   ├── model.py
 │   ├── solver.py
 │   ├── viz.py
 │   ├── optimizer.py
-│   └── __init__.py
+│   └── database.json
 │
 ├── images/
 ├── app.py
@@ -69,6 +70,158 @@ abschlussprojekt/
 ├── README.md
 └── .gitignore
 ```
+
+---
+
+# Softwarearchitektur
+
+Die Anwendung ist modular in mehrere Schichten unterteilt:
+
+## 1. Modellschicht
+`model.py`
+
+- Definition der Klassen Node, Spring und Structure
+- Verwaltung der Datenstruktur
+- Speicherung und Laden über TinyDB
+
+## 2. Berechnungsschicht
+`solver.py`, `optimizer.py`
+
+- Aufbau und Lösung der globalen Steifigkeitsmatrix
+- Berechnung der Verformungsenergie
+- Topologieoptimierung
+- Konnektivitätsprüfung
+
+## 3. Darstellungsschicht
+`viz.py`
+
+- Visualisierung der Struktur
+- Heatmap-Darstellung
+- Performance-optimierte Plot-Modi
+- PNG-Export und GIF-Erstellung
+
+## 4. UI-Schicht
+`app.py`
+
+- Streamlit-Webinterface
+- Benutzerinteraktion
+- Steuerung von Solver und Optimizer
+- Fortschrittsanzeige
+- Download-Funktionen
+
+Diese klare Trennung erhöht Wartbarkeit, Erweiterbarkeit und Nachvollziehbarkeit des Projekts.
+
+---
+
+## Erklärung der einzelnen Python-Dateien
+
+### `app.py`
+Hauptanwendung der Streamlit-Web-App.
+
+Aufgaben:
+- Aufbau der Benutzeroberfläche
+- Verarbeitung der Benutzereingaben
+- Steuerung von Solver und Optimizer
+- Darstellung der Plots
+- Download-Funktionen
+- GIF-Erstellung
+- Speicherung und Laden von Strukturen
+
+`app.py` verbindet alle Module miteinander und bildet die zentrale Steuerungsschicht.
+
+---
+
+### `src/model.py`
+Definiert die Datenstruktur des mechanischen Modells.
+
+Enthält:
+- Klasse `Node` (Knoten mit Koordinaten, Randbedingungen, Kräften)
+- Klasse `Spring` (Feder zwischen zwei Knoten)
+- Klasse `Structure` (Gesamtstruktur mit:
+  - Knotensammlung
+  - Federliste
+  - Massenberechnung
+  - Adjazenzberechnung
+  - Entfernen von Knoten
+  - Speichern/Laden über TinyDB)
+
+Warum wichtig?
+→ Trennt die Modelllogik sauber von Berechnung und Visualisierung.  
+→ Macht die Struktur serialisierbar (Speichern in Datenbank).
+
+---
+
+### `src/solver.py`
+Implementiert die numerische Lösung des Gleichungssystems:
+
+\[
+K \cdot u = F
+\]
+
+Aufgaben:
+- Assemblierung der globalen Steifigkeitsmatrix
+- Sparse- oder Dense-Berechnung (je nach Verfügbarkeit von SciPy)
+- Behandlung von Randbedingungen
+- Regularisierung bei singulären Matrizen
+- Berechnung der Verschiebungen
+
+Warum wichtig?
+→ Herzstück der mechanischen Simulation  
+→ Ermöglicht physikalisch korrekte Berechnung der Verformung
+
+---
+
+### `src/optimizer.py`
+Implementiert die Topologieoptimierung.
+
+Aufgaben:
+- Berechnung der Verformungsenergie
+- Bewertung der Knoten (Score-System)
+- Entfernen energetisch unwichtiger Knoten
+- Sicherstellung der Konnektivität
+- Dead-End-Pruning
+- Fortschritts-Callback
+- Snapshot-Erstellung für GIF
+
+Warum wichtig?
+→ Realisiert die eigentliche Optimierungslogik  
+→ Reduziert Masse bei Erhalt der strukturellen Stabilität
+
+---
+
+### `src/viz.py`
+Verantwortlich für alle Visualisierungen.
+
+Enthält:
+- Plot der Originalstruktur
+- Plot der deformierten Struktur
+- Optimierte Struktur
+- Nodes-only-Darstellung (Performance)
+- Heatmap-Darstellung
+- PNG-Export
+- GIF-Erstellung
+
+Warum wichtig?
+→ Saubere Trennung zwischen Berechnung und Darstellung  
+→ Ermöglicht verschiedene Plot-Modi ohne Logik-Duplikation
+
+---
+
+### `src/__init__.py`
+Leere Datei zur Kennzeichnung des Ordners als Python-Package.
+
+Warum wichtig?
+→ Ermöglicht Imports wie `from src.model import ...`  
+→ Erhöht Portabilität und Kompatibilität
+
+---
+
+### `src/database.json`
+TinyDB-Datenbank zur Speicherung optimierter Strukturen.
+
+Warum wichtig?
+→ Ermöglicht dauerhaftes Speichern mehrerer Strukturen  
+→ Realisiert das erweiterte Speichersystem
 
 ---
 
@@ -84,28 +237,109 @@ abschlussprojekt/
 
 ---
 
+# Mathematische Grundlagen
+
+## Modellierung als lineares Federsystem
+
+Die Struktur wird als System aus Massenpunkten (Knoten) und linearen elastischen Federn modelliert.  
+Jeder Knoten besitzt zwei Freiheitsgrade:
+
+- Horizontale Verschiebung \( u_x \)
+- Vertikale Verschiebung \( u_z \)
+
+Federn wirken ausschließlich entlang ihrer Verbindungsrichtung.
+
+---
+
+## Globale Steifigkeitsmatrix
+
+Für jede Feder wird eine lokale Steifigkeitsmatrix berechnet.  
+Durch Superposition aller Beiträge entsteht die **globale Steifigkeitsmatrix K**.
+
+Nach Anbringen der Randbedingungen ergibt sich das lineare Gleichungssystem:
+
+\[
+K \cdot u = F
+\]
+
+wobei:
+
+- \(K\) = globale Steifigkeitsmatrix  
+- \(u\) = Verschiebungsvektor  
+- \(F\) = Kraftvektor  
+
+Das System wird numerisch gelöst (sparse oder dense).
+
+---
+
+## Verformungsenergie
+
+Die in einer Feder gespeicherte Energie ergibt sich aus:
+
+\[
+E = \frac{1}{2} k (\Delta L)^2
+\]
+
+Federn mit geringer gespeicherter Energie tragen wenig zur Gesamtsteifigkeit bei.
+
+---
+
+## Optimierungskriterium
+
+Die Verformungsenergie jeder Feder wird berechnet und gleichmäßig auf ihre beiden Endknoten verteilt.
+
+Knoten mit geringer Gesamtenergie werden als weniger relevant für die strukturelle Steifigkeit betrachtet und im Optimierungsprozess entfernt.
+
+Vor dem endgültigen Entfernen wird überprüft:
+
+- Ob die Struktur weiterhin zusammenhängend ist
+- Ob Lasten weiterhin zu den Lagern übertragen werden können
+- Ob das System weiterhin lösbar ist
+
+---
+
 # Funktionsweise des Optimizers
 
 1. Modell initialisieren  
 2. Gleichungssystem **K · u = F** lösen  
 3. Verformungsenergie berechnen  
-4. Wichtigkeit der Knoten bestimmen  
-5. Schwächste Knoten entfernen  
+4. Wichtigkeit der Punkte bestimmen  
+5. Schwächste Punkte entfernen  
 6. Neue Masse berechnen  
-7. Wiederholen bis Zielmasse erreicht ist oder Struktur instabil wird  
+7. Wiederholen bis Soll-Masse erreicht  
+
+---
+
+# Erfüllung der Minimalanforderungen
+
+| Minimalanforderung | Umsetzung im Projekt |
+|--------------------|----------------------|
+| Web-UI mit Streamlit | `app.py` |
+| Frei definierbarer rechteckiger Bauraum | Grid-Generator (nx, nz) |
+| Randbedingungen (Loslager / Festlager) | Sidebar-Auswahl |
+| Externe Kräfte an Knoten | Sidebar (Fz) |
+| Lösung von K · u = F | `solver.py` |
+| Topologieoptimierung | `optimizer.py` |
+| Visualisierung vor / während / nach Optimierung | `viz.py` |
+| Struktur speicherbar & ladbar | TinyDB (`database.json`) |
+| Download der optimierten Geometrie | PNG-Export |
+| Test am MBB-Balken | Dokumentierte Beispielstrukturen |
+| Verifikation, dass Struktur nicht auseinanderfällt | Connectivity-Check im Optimierer |
+| Deployment mit Streamlit | Lokaler Start via `streamlit run app.py` |
+
+Damit werden alle in der Aufgabenstellung definierten Minimalanforderungen erfüllt.
 
 ---
 
 # Erweiterungen
 
+Im Rahmen dieses Abschlussprojekts wurden nicht nur die Minimalanforderungen erfüllt, sondern ebenfalls einige Erweiterungen implementiert. Folgend wird jedes zusätzlich implementierte Feature kurz erklärt und beschrieben.
+
+---
+
 ## Auswahl der Lagerung
 
-In der Sidebar kann eingestellt werden, wie die Struktur gelagert werden soll.
-
-- Lager links unten
-- Lager rechts unten
-- Auswahl zwischen **Loslager** und **Festlager**
-- Loslager blockieren nur die Bewegung in z-Richtung
+In der Sidebar des User Interface lässt sich einstellen, wie die Struktur gelagert werden soll. Die Lager befinden sich hierbei immer am Knoten in der linken und in der rechten unteren Ecke der Struktur. Es lässt sich über ein Drop-Down Menü auswählen, ob Loslager oder Festlager verwendet werden sollen. Die Loslager blockieren hierbei nur die Bewegung in die z-Richtung.
 
 ![Auswahl der Lagerung](images/Auswahl_der_Lagerung.png)
 
@@ -113,11 +347,7 @@ In der Sidebar kann eingestellt werden, wie die Struktur gelagert werden soll.
 
 ## Auswahl des Kraftangriffspunkts
 
-Die Kraft wirkt ausschließlich in z-Richtung.
-
-- Auswahl des Kraft-Knotens (x-index)
-- Auswahl des Kraft-Knotens (z-index)
-- Einstellbarer Kraftbetrag Fz
+In der Sidebar sind zwei Schieberegler eingebaut, welche bestimmen, an welchem Knoten die Kraft angreifen soll. Die Richtung der Kraft ist hierbei immer in z-Richtung. Der Betrag der Kraft lässt sich ebenfalls einstellen.
 
 ![Auswahl des Kraftangriffspunkts](images/Auswahl_des_Kraftangriffspunktes.png)
 
@@ -125,11 +355,7 @@ Die Kraft wirkt ausschließlich in z-Richtung.
 
 ## Optimierungsziel
 
-Die Stärke der Optimierung wird über einen Zielmassen-Faktor (0–1) eingestellt.
-
-Die Optimierung läuft, bis:
-- Zielmasse erreicht wird  
-- oder die Struktur instabil wird  
+Wie stark die Struktur optimiert wird, lässt sich in unserem Abschlussprojekt einstellen. Diese “Stärke” der Optimierung wird mithilfe der Zielmasse eingestellt. Dafür gibt es im UI einen Slider, mit der ein Faktor für die Zielmasse eingestellt werden kann (0-1). Die Struktur wird nach Bestätigung durch den Optimierungs-Button so lange optimiert, bis entweder Zielmasse erreicht wird oder die Struktur nicht mehr zusammenhalten würde.
 
 ![Optimierungsziel](images/Optimierungsziel.png)
 
@@ -137,41 +363,49 @@ Die Optimierung läuft, bis:
 
 ## Fortschrittsanzeige der Optimierung
 
-Während der Optimierung wird eine Fortschrittsleiste angezeigt mit:
-
-- Aktueller Iteration  
-- Aktueller Masse  
-- Zielmasse  
-- Fortschritt in Prozent  
-- Anzahl verbleibender Knoten  
+Während der laufenden Optimierung wird ganz oben eine Leiste dargestellt, welche anzeigt, wie weit die Optimierung bereits fortgeschritten ist. Die Leiste spiegelt hierbei den Fortschritt der Gewichtsreduzierung wieder, bei voller Leiste wurde das Zielgewicht erreicht. Ebenfalls wird angezeigt bei der wievielten Iteration das Programm gerade ist, wie hoch die Masse gerade ist, wieviele Knoten die Struktur noch besitzt und der Fortschritt in Prozent. In folgender Abbildung ist diese Anzeige dargestellt:
 
 ![Fortschrittsanzeige](images/Fortschrittsanzeige_der_Optimierung.png)
 
 ---
 
-## Plot-Modi
+## Herunterladen der Grafiken
 
-### Nodes only
+In den Minimalanforderungen ist festgelegt, dass man die optimierte Struktur als Bilddatei herunterladen können soll. In diesem Projekt haben wir zusätzlich implementiert, dass alle Plots und Grafiken als .png-Dateien heruntergeladen werden können. Dafür befindet sich unter jeder Grafik ein Button, mit dem man den Download starten kann.
 
-Nur die Knoten werden dargestellt.  
-Ideal für große Strukturen.
+---
+
+## Erweitertes Speichersystem
+
+Die Minimalanforderungen verlangen, dass man die optimierte Struktur speichern und zu einem späteren Zeitpunkt wieder laden kann. In diesem Projekt wurde zusätzlich implementiert, dass beliebig viele Strukturen in der Datenbank, welche mit TinyDB umgesetzt wurde, abgespeichert werden können. Dafür gibt es in der Sidebar der UI ein Feld, wo ein Name für die Struktur festgelegt werden kann. Die Struktur wird dann mit einer bestimmten ID in die Datenbank gespeichert. Hierbei kann nur die optimierte Struktur abgespeichert werden. Existiert bereits eine Struktur mit dem gleichen Namen, so wird diese Struktur überschrieben.
+
+Über das Drop-Down Menü ganz oben in der Seitenleiste können gespeicherte Strukturen anhand ihres Namens aus der Datenbank geladen werden und anschließend weiter optimiert werden. Dafür wird mit dem Drop-Down Menü eine Struktur ausgewählt und auf den Button “Laden” geklickt. Es besteht ebenfalls die Möglichkeit die ausgewählte Struktur mit dem Button “Löschen” wieder aus der Datenbank zu löschen.
+
+![Speichersystem](images/Erweitertes_Speicherungssystem.png)
+
+---
+
+## Plot-Modus
+
+Für dieses Abschlussprojekt wurde ein Feature implementiert, das die Darstellung der Plots einstellbar macht. Hierbei gibt es 3 verschiedene Modi: 
+
+Im Modus “Nodes only” werden nur die Knoten der Struktur als Punkte im Plot gezeichnet. Dies eignet sich vor allem für Strukturen mit vielen Knoten, da das Diagramm sonst unübersichtlich werden würde.
+
+Im Modus “Lines (Federn)” hingegen werden die Knoten samt allen Federn der Struktur geplottet, was vor allem bei kleineren Strukturen eine genauere Darstellung der Verformung ermöglicht.
+
+Im standardmäßig eingestellten Modus “Auto” wird je nach Größe der Struktur (Anzahl der Knoten) umgeschalten zwischen der Darstellung mit den Federn und der Darstellung von den Knoten allein. In folgender Darstellung ist der Plot einer größeren Struktur (unverformt) dargestellt, der nur die Knoten enthält.
+
+Hier ist nun eine kleinere Struktur (verformt) dargestellt. Hierbei sind auch die Federn abgebildet.
+
+### Beispiel: Nodes only (optimiert)
 
 ![Optimized Nodes Only](images/optimized_(nodes_only).png)
 
----
-
-### Lines (Federn)
-
-Knoten und Federn werden dargestellt.  
-Geeignet für kleinere Strukturen.
+### Beispiel: Lines (Federn) (deformiert)
 
 ![Optimized Lines](images/optimized.png)
 
----
-
-### Plot-Modus Auswahl (Auto / Nodes only / Lines)
-
-Je nach Strukturgröße kann automatisch umgeschaltet werden.
+### Auswahl im UI (Auto / Nodes only / Lines)
 
 ![Plot Modus](images/Plot_Modus.png)
 
@@ -179,17 +413,15 @@ Je nach Strukturgröße kann automatisch umgeschaltet werden.
 
 ## Plot als Heatmap
 
-Optional kann die Verformungsenergie farblich dargestellt werden.
+Für die Plots, die eine deformierte Struktur darstellen, wurde eine Option implementiert, mit der die Knoten/Federn je nach aufgenommener Verformungsenergie unterschiedlich eingefärbt werden. Dies geschieht über die Checkbox in der Sidebar:
+
+Wenn die Option aktiviert ist, werden die beiden Grafiken der deformierten Plots als Heatmap dargestellt. Das funktioniert für beide Plot-Modi, nachfolgend ist eine Heatmap im “Lines (Federn)” Modus und eine im “Nodes only” Modus dargestellt. Es lässt sich auch nach der Optimierung noch zwischen der normalen Darstellung und der als Heatmap umschalten.
 
 ![Heatmap Option](images/Plot_als_Heatmap.png)
-
----
 
 ### Heatmap – Nodes only
 
 ![Heatmap Nodes](images/Energie_Heatmap_(Deformed).png)
-
----
 
 ### Heatmap – Lines (Federn)
 
@@ -197,23 +429,9 @@ Optional kann die Verformungsenergie farblich dargestellt werden.
 
 ---
 
-## Erweitertes Speichersystem
+## Darstellung der Optimierung als GIF
 
-- Speicherung beliebig vieler Strukturen in TinyDB  
-- Speicherung nur der optimierten Struktur  
-- Überschreiben bei gleichem Namen  
-- Laden und Löschen gespeicherter Strukturen  
-
-![Speichersystem](images/Erweitertes_Speicherungssystem.png)
-
----
-
-# Darstellung der Optimierung als GIF
-
-Wenn die Option vor Start der Optimierung aktiviert wird,  
-wird jede Iteration gespeichert und am Ende als GIF zusammengefügt.
-
-Das GIF kann ebenfalls heruntergeladen werden.
+In der Sidebar des UI gibt es eine Checkbox, die einstellt, ob für die Optimierung auch ein GIF erstellt werden soll. Für Erstellung eines GIFs muss die Option jedoch schon vor der Optimierung ausgewählt werden. Ist die Option aktiv, so wird für jeden Iterationsschritt des Optimierers eine Grafik erstellt. Diese Grafiken werden am Ende der Optimierung zu einem GIF zusammengefügt und ganz unten auf der Webseite angezeigt. Das GIF lässt sich so wie die anderen Grafiken herunterladen. Folgend ist ein solches GIF dargestellt.
 
 ![Optimierung GIF](images/optimization.gif)
 
