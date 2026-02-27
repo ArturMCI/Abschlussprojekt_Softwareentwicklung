@@ -114,9 +114,7 @@ Warum wichtig?
 ### `src/solver.py`
 Implementiert die numerische Lösung des Gleichungssystems:
 
-\[
-K \cdot u = F
-\]
+K * u = F
 
 Aufgaben:
 - Assemblierung der globalen Steifigkeitsmatrix
