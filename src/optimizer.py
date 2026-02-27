@@ -99,6 +99,7 @@ def optimize_until_target(
     target_mass: float,
     max_steps: int = 10_000,
     progress_callback=None,
+    snapshot_callback=None,
 ) -> tuple[Structure | None, int, str]:
 
     current = _fast_snapshot(struct)
@@ -164,7 +165,29 @@ def optimize_until_target(
         
         if progress_callback:
             progress_callback(steps, current.total_mass(), target_mass, len(current.nodes))
+        
+        if snapshot_callback:
+            snapshot_callback(steps, current)
 
     # Finale Säuberung
     _prune_dead_ends(current, protected)
     return current, steps, f"Ziel erreicht oder stabilisiert bei {current.total_mass():.1f}"
+
+def get_energy_data(struct: Structure, u_vec: np.ndarray):
+    """Berechnet Energiewerte für Federn und Knoten für Heatmap"""
+    id2pos = struct.id_to_pos()
+    idx_i, idx_j, ks, dirs = _get_vectorized_data(struct, id2pos)
+    
+    # Feder-Energie: 0.5 * k * delta_L^2
+    u_i = np.stack([u_vec[2*idx_i], u_vec[2*idx_i + 1]], axis=1)
+    u_j = np.stack([u_vec[2*idx_j], u_vec[2*idx_j + 1]], axis=1)
+    du_proj = np.einsum('ij,ij->i', u_j - u_i, dirs)
+    spring_energies = 0.5 * ks * (du_proj ** 2)
+    
+    # Knoten-Energie (Durchschnitt der verbundenen Federn)
+    node_energies = {nid: 0.0 for nid in struct.nodes.keys()}
+    for idx, sp in enumerate(struct.springs):
+        node_energies[sp.i] += 0.5 * spring_energies[idx]
+        node_energies[sp.j] += 0.5 * spring_energies[idx]
+        
+    return spring_energies, node_energies

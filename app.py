@@ -11,8 +11,10 @@ from src.viz import (
     plot_original_fast_nodes,
     plot_deformed_fast_nodes,
     plot_optimized_fast_nodes,
+    plot_heatmap,
+    create_gif_from_figures,
 )
-from src.optimizer import optimize_until_target
+from src.optimizer import optimize_until_target, get_energy_data
 
 
 def build_grid_structure(nx: int, nz: int, k: float) -> Structure:
@@ -134,6 +136,10 @@ if "support_nodes" not in st.session_state:
     st.session_state.support_nodes = None  # (left_id, right_id)
 if "plot_mode" not in st.session_state:
     st.session_state.plot_mode = "Auto"
+if "show_heatmap" not in st.session_state:
+    st.session_state.show_heatmap = False
+if "optimization_frames" not in st.session_state:
+    st.session_state.optimization_frames = None
 
 
 with st.sidebar:
@@ -215,6 +221,10 @@ with st.sidebar:
     )
     st.session_state.plot_mode = plot_mode
 
+    show_heatmap = st.checkbox("Energie-Heatmap anzeigen", value=st.session_state.show_heatmap)
+    st.session_state.show_heatmap = show_heatmap
+    
+
     st.header("Optimierung")
     target_factor = st.slider("Mass reduction factor (Zielmasse)", 0.1, 1.0, 0.5, 0.05)
 
@@ -223,6 +233,8 @@ with st.sidebar:
         btn_solve = st.button("Generate + Solve")
     with colb2:
         btn_opt = st.button("Optimize")
+    
+    create_gif = st.checkbox("Optimierungsverlauf als GIF erzeugen", value=False)
 
     st.markdown("---")
     st.header("Struktur speichern")
@@ -298,14 +310,37 @@ if btn_opt:
                 f"Fortschritt: {frac*100:.1f}% | Knoten: {n_nodes}"
             )
 
+        def snapshot_callback(step, cur_struct):
+            if frames is None:
+                return
+
+            supports = st.session_state.support_nodes
+            load = st.session_state.force_node_id
+            plot_mode_local = st.session_state.plot_mode
+
+            if _use_nodes_only(cur_struct, plot_mode_local):
+                fig = plot_optimized_fast_nodes(
+                    cur_struct,
+                    supports=supports,
+                    load=load
+                )
+            else:
+                fig = plot_optimized(cur_struct, show_nodes=False)
+
+            frames.append(fig)
+
+        # Liste von Frames für GIF
+        frames = [] if create_gif else None
+
         with st.spinner("Optimizing until target mass..."):
             try:
                 opt_struct, steps, msg = optimize_until_target(
-                    struct=struct,
-                    protected=protected,
-                    target_mass=target_mass,
-                    max_steps=10_000,
-                    progress_callback=progress_callback,
+                struct=struct,
+                protected=protected,
+                target_mass=target_mass,
+                max_steps=10_000,
+                progress_callback=progress_callback,
+                snapshot_callback=snapshot_callback if create_gif else None,
                 )
             except TypeError:
                 opt_struct, steps, msg = optimize_until_target(
@@ -321,6 +356,12 @@ if btn_opt:
             st.session_state.optimized_struct = opt_struct
             progress_bar.progress(100)
             st.success(f"{msg} (Steps: {steps})")
+            if create_gif and frames:
+                gif_buffer = create_gif_from_figures(frames, duration=0.2)
+                st.session_state.optimization_frames = gif_buffer
+            else:
+                st.session_state.optimization_frames = None
+        
 
 
 struct = st.session_state.struct
@@ -368,10 +409,23 @@ else:
     st.subheader("Deformierte Struktur:")
 
     if disp is not None:
-        if _use_nodes_only(struct, plot_mode):
-            def_plot = plot_deformed_fast_nodes(struct, disp, scale=SCALE, supports=supports, load=load)
+        if show_heatmap:            
+            # Berechnungen
+            u_vec, _ = solve_displacements(struct) 
+            s_es, n_es = get_energy_data(struct, u_vec)
+            
+            # Modus bestimmen
+            nodes_only = _use_nodes_only(struct, plot_mode)
+            
+            # WICHTIG: disp und SCALE übergeben!
+            def_plot = plot_heatmap(struct, disp, s_es, n_es, nodes_only, scale=SCALE)
+
         else:
-            def_plot = plot_deformed(struct, disp, scale=SCALE, show_nodes=False)
+            if _use_nodes_only(struct, plot_mode):
+                def_plot = plot_deformed_fast_nodes(struct, disp, scale=SCALE, supports=supports, load=load)
+            else:
+                def_plot = plot_deformed(struct, disp, scale=SCALE, show_nodes=False)
+       
 
         # plot deformed originale Struktur
         st.pyplot(def_plot, clear_figure=False)
@@ -402,6 +456,7 @@ else:
         st.markdown("---")
         st.subheader("Optimierte Struktur:")
 
+        
         if _use_nodes_only(opt_struct, plot_mode):
             opt_plot = plot_optimized_fast_nodes(opt_struct, supports=supports, load=load)
         else:
@@ -422,10 +477,21 @@ else:
         st.subheader("Deformierte optimierte Struktur:")
         try:
             _, opt_disp = solve_displacements(opt_struct)
-            if _use_nodes_only(opt_struct, plot_mode):
-                opt_def_plot = plot_deformed_fast_nodes(opt_struct, opt_disp, scale=SCALE, supports=supports, load=load)
+            if show_heatmap:            
+                # Berechnungen
+                u_vec, _ = solve_displacements(opt_struct) 
+                s_es, n_es = get_energy_data(opt_struct, u_vec)
+                
+                # Modus bestimmen
+                nodes_only = _use_nodes_only(opt_struct, plot_mode)
+                
+                # WICHTIG: disp und SCALE übergeben!
+                opt_def_plot = plot_heatmap(opt_struct, disp, s_es, n_es, nodes_only, scale=SCALE)           
             else:
-                opt_def_plot = plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False)
+                if _use_nodes_only(opt_struct, plot_mode):
+                    opt_def_plot = plot_deformed_fast_nodes(opt_struct, opt_disp, scale=SCALE, supports=supports, load=load)
+                else:
+                    opt_def_plot = plot_deformed(opt_struct, opt_disp, scale=SCALE, show_nodes=False)
             
             st.pyplot(opt_def_plot, clear_figure=False)
 
@@ -448,5 +514,18 @@ else:
         st.write(f"Knoten: {len(opt_struct.nodes)}")
         st.write(f"Federn: {len(opt_struct.springs)}")
         st.write(f"Masse: {opt_struct.total_mass():.2f}")
+
+        if st.session_state.optimization_frames is not None:
+            st.markdown("---")
+            st.subheader("Optimierungsverlauf (GIF)")
+
+            st.image(st.session_state.optimization_frames)
+
+            st.download_button(
+                label="Optimierungs-GIF herunterladen",
+                data=st.session_state.optimization_frames,
+                file_name="optimization.gif",
+                mime="image/gif"
+            )
 
 
