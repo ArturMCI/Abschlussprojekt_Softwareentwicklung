@@ -83,6 +83,7 @@ In der Liste sollten unter anderem folgende Pakete erscheinen:
 -   streamlit
 -   scipy
 -   tindb
+-   imageio
 
 ------------------------------------------------------------------------
 
