@@ -1,171 +1,227 @@
 # Abschlussprojekt -- 2D-Federstruktur mit Topologieoptimierung
 
-Dieses Projekt implementiert eine 2D-Federstruktur (Massenpunkte +
-lineare Federn) mit numerischer Lösung des Gleichungssystems **K · u =
-F** sowie einer schrittweisen Topologieoptimierung.\
-Die Anwendung wird als interaktive Web-App mit **Streamlit**
-bereitgestellt.
+Dieses Projekt implementiert eine 2D-Federstruktur (Massenpunkte + lineare Federn) mit numerischer Lösung des Gleichungssystems **K · u = F** sowie einer schrittweisen Topologieoptimierung.  
+Die Anwendung wird als interaktive Web-App mit **Streamlit** bereitgestellt.
 
-------------------------------------------------------------------------
+Neben den Minimalanforderungen wurden mehrere Erweiterungen implementiert.
 
-## Installation
+---
 
-### 1. Repository klonen
+# Installation
 
-Zuerst das Repository von GitHub klonen:
+## 1. Repository klonen
 
-``` bash
+```bash
 git clone <REPOSITORY-URL>
 cd <REPOSITORY-ORDNER>
 ```
 
-Beispiel:
+## 2. Virtuelle Umgebung erstellen
 
-``` bash
-git clone https://github.com/username/abschlussprojekt.git
-cd abschlussprojekt
-```
-
-------------------------------------------------------------------------
-
-### 2. Virtuelle Umgebung erstellen
-
-Im Projekt-Hauptordner eine virtuelle Python-Umgebung erstellen:
-
-``` bash
+```bash
 python -m venv .venv
 ```
 
-------------------------------------------------------------------------
-
-### 3. Virtuelle Umgebung aktivieren
+## 3. Virtuelle Umgebung aktivieren
 
 **Windows (PowerShell):**
 
-``` bash
+```bash
 .venv\Scripts\activate
 ```
 
 **Mac / Linux:**
 
-``` bash
+```bash
 source .venv/bin/activate
 ```
 
-Nach erfolgreicher Aktivierung erscheint `(.venv)` vor dem Konsolenpfad.
+## 4. Abhängigkeiten installieren
 
-------------------------------------------------------------------------
-
-### 4. Abhängigkeiten installieren
-
-Die benötigten Python-Pakete werden über die `requirements.txt`
-installiert:
-
-``` bash
+```bash
 pip install -r requirements.txt
 ```
 
-------------------------------------------------------------------------
+## 5. Anwendung starten
 
-### 5. Installation überprüfen
-
-Mit folgendem Befehl kann überprüft werden, ob die Pakete korrekt
-installiert wurden:
-
-``` bash
-pip list
-```
-
-In der Liste sollten unter anderem folgende Pakete erscheinen:
-
--   numpy
--   matplotlib
--   streamlit
--   scipy
--   tindb
--   imageio
-
-------------------------------------------------------------------------
-
-### 6. Überprüfen der .gitignore-Konfiguration
-
-Um sicherzustellen, dass die virtuelle Umgebung (`.venv`) nicht ins
-Repository aufgenommen wird, kann folgender Befehl ausgeführt werden:
-
-``` bash
-git status
-```
-
-Die `.venv` darf in der Ausgabe **nicht** unter „Untracked files" oder
-„Changes to be committed" erscheinen.
-
-Falls `.venv` doch angezeigt wird, muss geprüft werden, ob die
-`.gitignore`-Datei folgende Einträge enthält:
-
-    .venv/
-    venv/
-    __pycache__/
-    *.pyc
-
-------------------------------------------------------------------------
-
-### 7. Anwendung starten
-
-Nach erfolgreicher Installation kann die Streamlit-Anwendung gestartet
-werden:
-
-``` bash
+```bash
 streamlit run app.py
 ```
 
-Die Anwendung öffnet sich anschließend automatisch im Browser.
+---
 
-------------------------------------------------------------------------
+# Projektstruktur
 
-## Projektstruktur
+```
+abschlussprojekt/
+│
+├── .venv/
+├── src/
+│   ├── model.py
+│   ├── solver.py
+│   ├── viz.py
+│   ├── optimizer.py
+│   └── __init__.py
+│
+├── images/
+├── app.py
+├── requirements.txt
+├── README.md
+└── .gitignore
+```
 
-    abschlussprojekt/
-    │
-    ├── .venv/                 # Virtuelle Umgebung (nicht im Repository)
-    ├── src/                   # Quellcode
-    │   |-- model.py
-    │   |-- solver.py
-    │   |-- viz.py
-    |   |-- optimizer.py
-    │   |-- __init__.py
-    │
-    ├── app.py                 # Streamlit-Hauptanwendung
-    ├── requirements.txt       # Projektabhängigkeiten
-    ├── README.md
-    └── .gitignore
+---
 
-------------------------------------------------------------------------
+# Verwendete Technologien
 
-## Verwendete Technologien
+- Python  
+- NumPy  
+- SciPy  
+- Matplotlib  
+- Streamlit  
+- TinyDB  
+- ImageIO  
 
--   Python
--   NumPy (lineare Algebra)
--   Matplotlib (Visualisierung)
--   Streamlit (Web-Interface)
--   Tinydb (Datenbank)
--   Scipy
+---
 
-------------------------------------------------------------------------
+# Funktionsweise des Optimizers
 
-## Funktionsweise Optimizer
+1. Modell initialisieren  
+2. Gleichungssystem **K · u = F** lösen  
+3. Verformungsenergie berechnen  
+4. Wichtigkeit der Knoten bestimmen  
+5. Schwächste Knoten entfernen  
+6. Neue Masse berechnen  
+7. Wiederholen bis Zielmasse erreicht ist oder Struktur instabil wird  
 
-1. Modell initialisieren
-2. K * u = F lösen
-3. Verformungsenergie berechnen
-4. Wichtigkeit der Punkte bestimmen
-5. Schwächste Punkte entfernen
-6. Neue Masse berechnen
-7. Wiederholen bis Soll-Masse erreicht
+---
 
------------------------------------------------------------------------
+# Erweiterungen
 
-## Autor:innen
+## Auswahl der Lagerung
 
-Artur Surberg und Julian Köll
+In der Sidebar kann eingestellt werden, wie die Struktur gelagert werden soll.
 
-Projekt im Rahmen des Moduls Softwaredesign.
+- Lager links unten
+- Lager rechts unten
+- Auswahl zwischen **Loslager** und **Festlager**
+- Loslager blockieren nur die Bewegung in z-Richtung
+
+![Auswahl der Lagerung](images/Auswahl_der_Lagerung.png)
+
+---
+
+## Auswahl des Kraftangriffspunkts
+
+Die Kraft wirkt ausschließlich in z-Richtung.
+
+- Auswahl des Kraft-Knotens (x-index)
+- Auswahl des Kraft-Knotens (z-index)
+- Einstellbarer Kraftbetrag Fz
+
+![Auswahl des Kraftangriffspunkts](images/Auswahl_des_Kraftangriffspunktes.png)
+
+---
+
+## Optimierungsziel
+
+Die Stärke der Optimierung wird über einen Zielmassen-Faktor (0–1) eingestellt.
+
+Die Optimierung läuft, bis:
+- Zielmasse erreicht wird  
+- oder die Struktur instabil wird  
+
+![Optimierungsziel](images/Optimierungsziel.png)
+
+---
+
+## Fortschrittsanzeige der Optimierung
+
+Während der Optimierung wird eine Fortschrittsleiste angezeigt mit:
+
+- Aktueller Iteration  
+- Aktueller Masse  
+- Zielmasse  
+- Fortschritt in Prozent  
+- Anzahl verbleibender Knoten  
+
+![Fortschrittsanzeige](images/Fortschrittsanzeige_der_Optimierung.png)
+
+---
+
+## Plot-Modi
+
+### Nodes only
+
+Nur die Knoten werden dargestellt.  
+Ideal für große Strukturen.
+
+![Optimized Nodes Only](images/optimized_(nodes_only).png)
+
+---
+
+### Lines (Federn)
+
+Knoten und Federn werden dargestellt.  
+Geeignet für kleinere Strukturen.
+
+![Optimized Lines](images/optimized.png)
+
+---
+
+### Plot-Modus Auswahl (Auto / Nodes only / Lines)
+
+Je nach Strukturgröße kann automatisch umgeschaltet werden.
+
+![Plot Modus](images/Plot_Modus.png)
+
+---
+
+## Plot als Heatmap
+
+Optional kann die Verformungsenergie farblich dargestellt werden.
+
+![Heatmap Option](images/Plot_als_Heatmap.png)
+
+---
+
+### Heatmap – Nodes only
+
+![Heatmap Nodes](images/Energie_Heatmap_(Deformed).png)
+
+---
+
+### Heatmap – Lines (Federn)
+
+![Heatmap Lines](images/Energie_Heatmap_(Deformed_2).png)
+
+---
+
+## Erweitertes Speichersystem
+
+- Speicherung beliebig vieler Strukturen in TinyDB  
+- Speicherung nur der optimierten Struktur  
+- Überschreiben bei gleichem Namen  
+- Laden und Löschen gespeicherter Strukturen  
+
+![Speichersystem](images/Erweitertes_Speicherungssystem.png)
+
+---
+
+# Darstellung der Optimierung als GIF
+
+Wenn die Option vor Start der Optimierung aktiviert wird,  
+wird jede Iteration gespeichert und am Ende als GIF zusammengefügt.
+
+Das GIF kann ebenfalls heruntergeladen werden.
+
+![Optimierung GIF](images/optimization.gif)
+
+---
+
+# Autor:innen
+
+Artur Surberg  
+Julian Köll  
+
+Projekt im Rahmen des Moduls **Softwaredesign**
