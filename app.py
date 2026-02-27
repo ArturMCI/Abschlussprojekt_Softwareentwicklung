@@ -100,7 +100,7 @@ def apply_force_at(struct: Structure, nx: int, i: int, j: int, fz: float) -> int
 
 
 st.set_page_config(page_title="Federstruktur (x-z)", layout="wide")
-st.title("2D-Federstruktur (x-z) – Solver & MBB-Optimizer")
+st.title("Abschlussprojekt: 2D-Topologieoptimierung")
 
 SCALE = 1.0  # keine UI-Kontrolle
 
@@ -230,9 +230,9 @@ with st.sidebar:
 
     colb1, colb2 = st.columns(2)
     with colb1:
-        btn_solve = st.button("Generate + Solve")
+        btn_solve = st.button("Generieren")
     with colb2:
-        btn_opt = st.button("Optimize")
+        btn_opt = st.button("Optimieren")
     
     create_gif = st.checkbox("Optimierungsverlauf als GIF erzeugen", value=False)
 
