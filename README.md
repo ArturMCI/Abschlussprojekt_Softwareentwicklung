@@ -3,7 +3,7 @@
 Dieses Projekt implementiert eine 2D-Federstruktur (Massenpunkte + lineare Federn) mit numerischer Lösung des Gleichungssystems **K · u = F** sowie einer schrittweisen Topologieoptimierung.  
 Die Anwendung wird als interaktive Web-App mit **Streamlit** bereitgestellt.
 
-Neben den Minimalanforderungen wurden mehrere Erweiterungen implementiert, die im Folgenden beschrieben werden.
+Neben den Minimalanforderungen wurden mehrere Erweiterungen implementiert.
 
 ---
 
@@ -16,22 +16,11 @@ git clone <REPOSITORY-URL>
 cd <REPOSITORY-ORDNER>
 ```
 
-Beispiel:
-
-```bash
-git clone https://github.com/username/abschlussprojekt.git
-cd abschlussprojekt
-```
-
----
-
 ## 2. Virtuelle Umgebung erstellen
 
 ```bash
 python -m venv .venv
 ```
-
----
 
 ## 3. Virtuelle Umgebung aktivieren
 
@@ -47,23 +36,17 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
----
-
 ## 4. Abhängigkeiten installieren
 
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
 ## 5. Anwendung starten
 
 ```bash
 streamlit run app.py
 ```
-
-Die Anwendung öffnet sich anschließend automatisch im Browser.
 
 ---
 
@@ -72,15 +55,16 @@ Die Anwendung öffnet sich anschließend automatisch im Browser.
 ```
 abschlussprojekt/
 │
-├── .venv/                 # Virtuelle Umgebung (nicht im Repository)
-├── src/                   # Quellcode
+├── .venv/
+├── src/
 │   ├── model.py
 │   ├── solver.py
 │   ├── viz.py
 │   ├── optimizer.py
 │   └── __init__.py
 │
-├── app.py                 # Streamlit-Hauptanwendung
+├── images/
+├── app.py
 ├── requirements.txt
 ├── README.md
 └── .gitignore
@@ -108,44 +92,46 @@ abschlussprojekt/
 4. Wichtigkeit der Knoten bestimmen  
 5. Schwächste Knoten entfernen  
 6. Neue Masse berechnen  
-7. Wiederholen bis Zielmasse erreicht ist oder die Struktur instabil wird  
+7. Wiederholen bis Zielmasse erreicht ist oder Struktur instabil wird  
 
 ---
 
-# Erweiterungen gegenüber den Minimalanforderungen
-
-Im Rahmen dieses Abschlussprojekts wurden mehrere zusätzliche Features implementiert.
-
----
+# Erweiterungen
 
 ## Auswahl der Lagerung
 
 In der Sidebar kann eingestellt werden, wie die Struktur gelagert werden soll.
 
-- Lager befinden sich am linken unteren und rechten unteren Knoten
+- Lager links unten
+- Lager rechts unten
 - Auswahl zwischen **Loslager** und **Festlager**
-- Loslager blockieren nur die Bewegung in **z-Richtung**
+- Loslager blockieren nur die Bewegung in z-Richtung
+
+![Auswahl der Lagerung](images/Auswahl_der_Lagerung.png)
 
 ---
 
 ## Auswahl des Kraftangriffspunkts
 
-In der Sidebar befinden sich zwei Schieberegler:
+Die Kraft wirkt ausschließlich in z-Richtung.
 
-- Auswahl des Knotens, an dem die Kraft angreift
-- Kraft wirkt ausschließlich in **z-Richtung**
-- Betrag der Kraft ist einstellbar
+- Auswahl des Kraft-Knotens (x-index)
+- Auswahl des Kraft-Knotens (z-index)
+- Einstellbarer Kraftbetrag Fz
+
+![Auswahl des Kraftangriffspunkts](images/Auswahl_des_Kraftangriffspunktes.png)
 
 ---
 
-## Einstellbares Optimierungsziel
+## Optimierungsziel
 
-Die Stärke der Optimierung kann über einen Slider eingestellt werden:
+Die Stärke der Optimierung wird über einen Zielmassen-Faktor (0–1) eingestellt.
 
-- Faktor für die Zielmasse (0–1)
-- Optimierung läuft, bis:
-  - Zielmasse erreicht ist  
-  - oder die Struktur instabil werden würde  
+Die Optimierung läuft, bis:
+- Zielmasse erreicht wird  
+- oder die Struktur instabil wird  
+
+![Optimierungsziel](images/Optimierungsziel.png)
 
 ---
 
@@ -153,89 +139,83 @@ Die Stärke der Optimierung kann über einen Slider eingestellt werden:
 
 Während der Optimierung wird eine Fortschrittsleiste angezeigt mit:
 
-- Aktuelle Iteration
-- Aktuelle Masse
-- Anzahl verbleibender Knoten
-- Prozentualer Fortschritt
-- Visuelle Anzeige der Gewichtsreduktion
+- Aktueller Iteration  
+- Aktueller Masse  
+- Zielmasse  
+- Fortschritt in Prozent  
+- Anzahl verbleibender Knoten  
 
-Die Leiste ist vollständig gefüllt, wenn das Zielgewicht erreicht wurde.
-
----
-
-## Download aller Grafiken
-
-Zusätzlich zur Minimalanforderung (Download der optimierten Struktur) können nun:
-
-- Alle erzeugten Plots
-- Heatmaps
-- GIFs  
-
-als **.png-Dateien** heruntergeladen werden.  
-Unter jeder Grafik befindet sich ein Download-Button.
-
----
-
-## Erweitertes Speichersystem (TinyDB)
-
-Über die Minimalanforderung hinaus wurde ein erweitertes Speichersystem implementiert:
-
-- Beliebig viele Strukturen können gespeichert werden
-- Speicherung erfolgt in einer TinyDB-Datenbank
-- Jede Struktur erhält eine ID
-- Speicherung nur der optimierten Struktur
-- Bestehende Namen werden überschrieben
-
-### Verwaltung gespeicherter Strukturen
-
-- Auswahl gespeicherter Strukturen über Dropdown-Menü
-- Laden per „Laden“-Button
-- Löschen per „Löschen“-Button
-- Geladene Strukturen können weiter optimiert werden
+![Fortschrittsanzeige](images/Fortschrittsanzeige_der_Optimierung.png)
 
 ---
 
 ## Plot-Modi
 
-Die Darstellung der Struktur kann angepasst werden:
+### Nodes only
 
-### 1️⃣ Nodes only
-- Nur Knoten als Punkte
-- Ideal für große Strukturen
-- Übersichtlicher bei vielen Elementen
+Nur die Knoten werden dargestellt.  
+Ideal für große Strukturen.
 
-### 2️⃣ Lines (Federn)
-- Knoten + Federn sichtbar
-- Detaillierte Darstellung
-- Geeignet für kleinere Strukturen
-
-### 3️⃣ Auto-Modus (Standard)
-- Automatische Umschaltung je nach Strukturgröße
-- Kombination aus Übersichtlichkeit und Detailtiefe
+![Optimized Nodes Only](images/optimized_(nodes_only).png)
 
 ---
 
-## Heatmap-Darstellung
+### Lines (Federn)
 
-Für deformierte Strukturen kann eine Heatmap aktiviert werden:
+Knoten und Federn werden dargestellt.  
+Geeignet für kleinere Strukturen.
 
-- Farbige Darstellung abhängig von Verformungsenergie
-- Funktioniert für:
-  - Nodes only
-  - Lines (Federn)
-- Umschaltbar auch nach abgeschlossener Optimierung
+![Optimized Lines](images/optimized.png)
 
 ---
 
-## Darstellung der Optimierung als GIF
+### Plot-Modus Auswahl (Auto / Nodes only / Lines)
 
-Optional kann während der Optimierung ein GIF erzeugt werden:
+Je nach Strukturgröße kann automatisch umgeschaltet werden.
 
-- Checkbox vor Start der Optimierung aktivieren
-- Jede Iteration wird als Bild gespeichert
-- Am Ende werden alle Bilder zu einem GIF zusammengefügt
-- Anzeige auf der Webseite
-- Download möglich
+![Plot Modus](images/Plot_Modus.png)
+
+---
+
+## Plot als Heatmap
+
+Optional kann die Verformungsenergie farblich dargestellt werden.
+
+![Heatmap Option](images/Plot_als_Heatmap.png)
+
+---
+
+### Heatmap – Nodes only
+
+![Heatmap Nodes](images/Energie_Heatmap_(Deformed).png)
+
+---
+
+### Heatmap – Lines (Federn)
+
+![Heatmap Lines](images/Energie_Heatmap_(Deformed_2).png)
+
+---
+
+## Erweitertes Speichersystem
+
+- Speicherung beliebig vieler Strukturen in TinyDB  
+- Speicherung nur der optimierten Struktur  
+- Überschreiben bei gleichem Namen  
+- Laden und Löschen gespeicherter Strukturen  
+
+![Speichersystem](images/Erweitertes_Speicherungssystem.png)
+
+---
+
+# Darstellung der Optimierung als GIF
+
+Wenn die Option vor Start der Optimierung aktiviert wird,  
+wird jede Iteration gespeichert und am Ende als GIF zusammengefügt.
+
+Das GIF kann ebenfalls heruntergeladen werden.
+
+![Optimierung GIF](images/optimization.gif)
 
 ---
 
@@ -244,4 +224,4 @@ Optional kann während der Optimierung ein GIF erzeugt werden:
 Artur Surberg  
 Julian Köll  
 
-Projekt im Rahmen des Moduls **Softwaredesign**.
+Projekt im Rahmen des Moduls **Softwaredesign**
