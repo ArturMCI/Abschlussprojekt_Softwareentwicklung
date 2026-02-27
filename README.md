@@ -57,11 +57,12 @@ abschlussprojekt/
 │
 ├── .venv/
 ├── src/
+│   ├── __init__.py
 │   ├── model.py
 │   ├── solver.py
 │   ├── viz.py
 │   ├── optimizer.py
-│   └── __init__.py
+│   └── database.json
 │
 ├── images/
 ├── app.py
@@ -69,6 +70,118 @@ abschlussprojekt/
 ├── README.md
 └── .gitignore
 ```
+
+---
+
+## Erklärung der einzelnen Python-Dateien
+
+### `app.py`
+Hauptanwendung der Streamlit-Web-App.
+
+Aufgaben:
+- Aufbau der Benutzeroberfläche
+- Verarbeitung der Benutzereingaben
+- Steuerung von Solver und Optimizer
+- Darstellung der Plots
+- Download-Funktionen
+- GIF-Erstellung
+- Speicherung und Laden von Strukturen
+
+`app.py` verbindet alle Module miteinander und bildet die zentrale Steuerungsschicht.
+
+---
+
+### `src/model.py`
+Definiert die Datenstruktur des mechanischen Modells.
+
+Enthält:
+- Klasse `Node` (Knoten mit Koordinaten, Randbedingungen, Kräften)
+- Klasse `Spring` (Feder zwischen zwei Knoten)
+- Klasse `Structure` (Gesamtstruktur mit:
+  - Knotensammlung
+  - Federliste
+  - Massenberechnung
+  - Adjazenzberechnung
+  - Entfernen von Knoten
+  - Speichern/Laden über TinyDB)
+
+Warum wichtig?
+→ Trennt die Modelllogik sauber von Berechnung und Visualisierung.  
+→ Macht die Struktur serialisierbar (Speichern in Datenbank).
+
+---
+
+### `src/solver.py`
+Implementiert die numerische Lösung des Gleichungssystems:
+
+\[
+K \cdot u = F
+\]
+
+Aufgaben:
+- Assemblierung der globalen Steifigkeitsmatrix
+- Sparse- oder Dense-Berechnung (je nach Verfügbarkeit von SciPy)
+- Behandlung von Randbedingungen
+- Regularisierung bei singulären Matrizen
+- Berechnung der Verschiebungen
+
+Warum wichtig?
+→ Herzstück der mechanischen Simulation  
+→ Ermöglicht physikalisch korrekte Berechnung der Verformung
+
+---
+
+### `src/optimizer.py`
+Implementiert die Topologieoptimierung.
+
+Aufgaben:
+- Berechnung der Verformungsenergie
+- Bewertung der Knoten (Score-System)
+- Entfernen energetisch unwichtiger Knoten
+- Sicherstellung der Konnektivität
+- Dead-End-Pruning
+- Fortschritts-Callback
+- Snapshot-Erstellung für GIF
+
+Warum wichtig?
+→ Realisiert die eigentliche Optimierungslogik  
+→ Reduziert Masse bei Erhalt der strukturellen Stabilität
+
+---
+
+### `src/viz.py`
+Verantwortlich für alle Visualisierungen.
+
+Enthält:
+- Plot der Originalstruktur
+- Plot der deformierten Struktur
+- Optimierte Struktur
+- Nodes-only-Darstellung (Performance)
+- Heatmap-Darstellung
+- PNG-Export
+- GIF-Erstellung
+
+Warum wichtig?
+→ Saubere Trennung zwischen Berechnung und Darstellung  
+→ Ermöglicht verschiedene Plot-Modi ohne Logik-Duplikation
+
+---
+
+### `src/__init__.py`
+Leere Datei zur Kennzeichnung des Ordners als Python-Package.
+
+Warum wichtig?
+→ Ermöglicht Imports wie `from src.model import ...`  
+→ Erhöht Portabilität und Kompatibilität
+
+---
+
+### `database.json`
+TinyDB-Datenbank zur Speicherung optimierter Strukturen.
+
+Warum wichtig?
+→ Ermöglicht dauerhaftes Speichern mehrerer Strukturen  
+→ Realisiert das erweiterte Speichersystem
 
 ---
 
@@ -91,8 +204,8 @@ abschlussprojekt/
 3. Verformungsenergie berechnen  
 4. Wichtigkeit der Knoten bestimmen  
 5. Schwächste Knoten entfernen  
-6. Neue Masse berechnen  
-7. Wiederholen bis Zielmasse erreicht ist oder Struktur instabil wird  
+6. Konnektivität prüfen  
+7. Wiederholen bis Zielmasse erreicht oder Struktur instabil  
 
 ---
 
@@ -100,24 +213,11 @@ abschlussprojekt/
 
 ## Auswahl der Lagerung
 
-In der Sidebar kann eingestellt werden, wie die Struktur gelagert werden soll.
-
-- Lager links unten
-- Lager rechts unten
-- Auswahl zwischen **Loslager** und **Festlager**
-- Loslager blockieren nur die Bewegung in z-Richtung
-
 ![Auswahl der Lagerung](images/Auswahl_der_Lagerung.png)
 
 ---
 
 ## Auswahl des Kraftangriffspunkts
-
-Die Kraft wirkt ausschließlich in z-Richtung.
-
-- Auswahl des Kraft-Knotens (x-index)
-- Auswahl des Kraft-Knotens (z-index)
-- Einstellbarer Kraftbetrag Fz
 
 ![Auswahl des Kraftangriffspunkts](images/Auswahl_des_Kraftangriffspunktes.png)
 
@@ -125,25 +225,11 @@ Die Kraft wirkt ausschließlich in z-Richtung.
 
 ## Optimierungsziel
 
-Die Stärke der Optimierung wird über einen Zielmassen-Faktor (0–1) eingestellt.
-
-Die Optimierung läuft, bis:
-- Zielmasse erreicht wird  
-- oder die Struktur instabil wird  
-
 ![Optimierungsziel](images/Optimierungsziel.png)
 
 ---
 
 ## Fortschrittsanzeige der Optimierung
-
-Während der Optimierung wird eine Fortschrittsleiste angezeigt mit:
-
-- Aktueller Iteration  
-- Aktueller Masse  
-- Zielmasse  
-- Fortschritt in Prozent  
-- Anzahl verbleibender Knoten  
 
 ![Fortschrittsanzeige](images/Fortschrittsanzeige_der_Optimierung.png)
 
@@ -152,68 +238,35 @@ Während der Optimierung wird eine Fortschrittsleiste angezeigt mit:
 ## Plot-Modi
 
 ### Nodes only
-
-Nur die Knoten werden dargestellt.  
-Ideal für große Strukturen.
-
 ![Optimized Nodes Only](images/optimized_(nodes_only).png)
 
----
-
 ### Lines (Federn)
-
-Knoten und Federn werden dargestellt.  
-Geeignet für kleinere Strukturen.
-
 ![Optimized Lines](images/optimized.png)
 
----
-
-### Plot-Modus Auswahl (Auto / Nodes only / Lines)
-
-Je nach Strukturgröße kann automatisch umgeschaltet werden.
-
+### Plot-Modus Auswahl
 ![Plot Modus](images/Plot_Modus.png)
 
 ---
 
 ## Plot als Heatmap
 
-Optional kann die Verformungsenergie farblich dargestellt werden.
-
 ![Heatmap Option](images/Plot_als_Heatmap.png)
 
----
-
 ### Heatmap – Nodes only
-
 ![Heatmap Nodes](images/Energie_Heatmap_(Deformed).png)
 
----
-
-### Heatmap – Lines (Federn)
-
+### Heatmap – Lines
 ![Heatmap Lines](images/Energie_Heatmap_(Deformed_2).png)
 
 ---
 
 ## Erweitertes Speichersystem
 
-- Speicherung beliebig vieler Strukturen in TinyDB  
-- Speicherung nur der optimierten Struktur  
-- Überschreiben bei gleichem Namen  
-- Laden und Löschen gespeicherter Strukturen  
-
 ![Speichersystem](images/Erweitertes_Speicherungssystem.png)
 
 ---
 
 # Darstellung der Optimierung als GIF
-
-Wenn die Option vor Start der Optimierung aktiviert wird,  
-wird jede Iteration gespeichert und am Ende als GIF zusammengefügt.
-
-Das GIF kann ebenfalls heruntergeladen werden.
 
 ![Optimierung GIF](images/optimization.gif)
 
