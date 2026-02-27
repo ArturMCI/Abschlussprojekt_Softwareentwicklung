@@ -114,7 +114,9 @@ Warum wichtig?
 ### `src/solver.py`
 Implementiert die numerische Lösung des Gleichungssystems:
 
-K * u = F
+\[
+K \cdot u = F
+\]
 
 Aufgaben:
 - Assemblierung der globalen Steifigkeitsmatrix
@@ -174,7 +176,7 @@ Warum wichtig?
 
 ---
 
-### `database.json`
+### `src/database.json`
 TinyDB-Datenbank zur Speicherung optimierter Strukturen.
 
 Warum wichtig?
@@ -200,16 +202,22 @@ Warum wichtig?
 1. Modell initialisieren  
 2. Gleichungssystem **K · u = F** lösen  
 3. Verformungsenergie berechnen  
-4. Wichtigkeit der Knoten bestimmen  
-5. Schwächste Knoten entfernen  
-6. Konnektivität prüfen  
-7. Wiederholen bis Zielmasse erreicht oder Struktur instabil  
+4. Wichtigkeit der Punkte bestimmen  
+5. Schwächste Punkte entfernen  
+6. Neue Masse berechnen  
+7. Wiederholen bis Soll-Masse erreicht  
 
 ---
 
 # Erweiterungen
 
+Im Rahmen dieses Abschlussprojekts wurden nicht nur die Minimalanforderungen erfüllt, sondern ebenfalls einige Erweiterungen implementiert. Folgend wird jedes zusätzlich implementierte Feature kurz erklärt und beschrieben.
+
+---
+
 ## Auswahl der Lagerung
+
+In der Sidebar des User Interface lässt sich einstellen, wie die Struktur gelagert werden soll. Die Lager befinden sich hierbei immer am Knoten in der linken und in der rechten unteren Ecke der Struktur. Es lässt sich über ein Drop-Down Menü auswählen, ob Loslager oder Festlager verwendet werden sollen. Die Loslager blockieren hierbei nur die Bewegung in die z-Richtung.
 
 ![Auswahl der Lagerung](images/Auswahl_der_Lagerung.png)
 
@@ -217,11 +225,15 @@ Warum wichtig?
 
 ## Auswahl des Kraftangriffspunkts
 
+In der Sidebar sind zwei Schieberegler eingebaut, welche bestimmen, an welchem Knoten die Kraft angreifen soll. Die Richtung der Kraft ist hierbei immer in z-Richtung. Der Betrag der Kraft lässt sich ebenfalls einstellen.
+
 ![Auswahl des Kraftangriffspunkts](images/Auswahl_des_Kraftangriffspunktes.png)
 
 ---
 
 ## Optimierungsziel
+
+Wie stark die Struktur optimiert wird, lässt sich in unserem Abschlussprojekt einstellen. Diese “Stärke” der Optimierung wird mithilfe der Zielmasse eingestellt. Dafür gibt es im UI einen Slider, mit der ein Faktor für die Zielmasse eingestellt werden kann (0-1). Die Struktur wird nach Bestätigung durch den Optimierungs-Button so lange optimiert, bis entweder Zielmasse erreicht wird oder die Struktur nicht mehr zusammenhalten würde.
 
 ![Optimierungsziel](images/Optimierungsziel.png)
 
@@ -229,42 +241,75 @@ Warum wichtig?
 
 ## Fortschrittsanzeige der Optimierung
 
+Während der laufenden Optimierung wird ganz oben eine Leiste dargestellt, welche anzeigt, wie weit die Optimierung bereits fortgeschritten ist. Die Leiste spiegelt hierbei den Fortschritt der Gewichtsreduzierung wieder, bei voller Leiste wurde das Zielgewicht erreicht. Ebenfalls wird angezeigt bei der wievielten Iteration das Programm gerade ist, wie hoch die Masse gerade ist, wieviele Knoten die Struktur noch besitzt und der Fortschritt in Prozent. In folgender Abbildung ist diese Anzeige dargestellt:
+
 ![Fortschrittsanzeige](images/Fortschrittsanzeige_der_Optimierung.png)
 
 ---
 
-## Plot-Modi
+## Herunterladen der Grafiken
 
-### Nodes only
+In den Minimalanforderungen ist festgelegt, dass man die optimierte Struktur als Bilddatei herunterladen können soll. In diesem Projekt haben wir zusätzlich implementiert, dass alle Plots und Grafiken als .png-Dateien heruntergeladen werden können. Dafür befindet sich unter jeder Grafik ein Button, mit dem man den Download starten kann.
+
+---
+
+## erweitertes Speichersystem
+
+Die Minimalanforderungen verlangen, dass man die optimierte Struktur speichern und zu einem späteren Zeitpunkt wieder laden kann. In diesem Projekt wurde zusätzlich implementiert, dass beliebig viele Strukturen in der Datenbank, welche mit TinyDB umgesetzt wurde, abgespeichert werden können. Dafür gibt es in der Sidebar der UI ein Feld, wo ein Name für die Struktur festgelegt werden kann. Die Struktur wird dann mit einer bestimmten ID in die Datenbank gespeichert. Hierbei kann nur die optimierte Struktur abgespeichert werden. Existiert bereits eine Struktur mit dem gleichen Namen, so wird diese Struktur überschrieben.
+
+Über das Drop-Down Menü ganz oben in der Seitenleiste können gespeicherte Strukturen anhand ihres Namens aus der Datenbank geladen werden und anschließend weiter optimiert werden. Dafür wird mit dem Drop-Down Menü eine Struktur ausgewählt und auf den Button “Laden” geklickt. Es besteht ebenfalls die Möglichkeit die ausgewählte Struktur mit dem Button “Löschen” wieder aus der Datenbank zu löschen.
+
+![Speichersystem](images/Erweitertes_Speicherungssystem.png)
+
+---
+
+## Plot-Modus
+
+Für dieses Abschlussprojekt wurde ein Feature implementiert, das die Darstellung der Plots einstellbar macht. Hierbei gibt es 3 verschiedene Modi: 
+
+Im Modus “Nodes only” werden nur die Knoten der Struktur als Punkte im Plot gezeichnet. Dies eignet sich vor allem für Strukturen mit vielen Knoten, da das Diagramm sonst unübersichtlich werden würde.
+
+Im Modus “Lines (Federn)” hingegen werden die Knoten samt allen Federn der Struktur geplottet, was vor allem bei kleineren Strukturen eine genauere Darstellung der Verformung ermöglicht.
+
+Im standardmäßig eingestellten Modus “Auto” wird je nach Größe der Struktur (Anzahl der Knoten) umgeschalten zwischen der Darstellung mit den Federn und der Darstellung von den Knoten allein. In folgender Darstellung ist der Plot einer größeren Struktur (unverformt) dargestellt, der nur die Knoten enthält.
+
+Hier ist nun eine kleinere Struktur (verformt) dargestellt. Hierbei sind auch die Federn abgebildet.
+
+### Beispiel: Nodes only (optimiert)
+
 ![Optimized Nodes Only](images/optimized_(nodes_only).png)
 
-### Lines (Federn)
+### Beispiel: Lines (Federn) (deformiert)
+
 ![Optimized Lines](images/optimized.png)
 
-### Plot-Modus Auswahl
+### Auswahl im UI (Auto / Nodes only / Lines)
+
 ![Plot Modus](images/Plot_Modus.png)
 
 ---
 
 ## Plot als Heatmap
 
+Für die Plots, die eine deformierte Struktur darstellen, wurde eine Option implementiert, mit der die Knoten/Federn je nach aufgenommener Verformungsenergie unterschiedlich eingefärbt werden. Dies geschieht über die Checkbox in der Sidebar:
+
+Wenn die Option aktiviert ist, werden die beiden Grafiken der deformierten Plots als Heatmap dargestellt. Das funktioniert für beide Plot-Modi, nachfolgend ist eine Heatmap im “Lines (Federn)” Modus und eine im “Nodes only” Modus dargestellt. Es lässt sich auch nach der Optimierung noch zwischen der normalen Darstellung und der als Heatmap umschalten.
+
 ![Heatmap Option](images/Plot_als_Heatmap.png)
 
 ### Heatmap – Nodes only
+
 ![Heatmap Nodes](images/Energie_Heatmap_(Deformed).png)
 
-### Heatmap – Lines
+### Heatmap – Lines (Federn)
+
 ![Heatmap Lines](images/Energie_Heatmap_(Deformed_2).png)
 
 ---
 
-## Erweitertes Speichersystem
+## Darstellung der Optimierung als GIF
 
-![Speichersystem](images/Erweitertes_Speicherungssystem.png)
-
----
-
-# Darstellung der Optimierung als GIF
+In der Sidebar des UI gibt es eine Checkbox, die einstellt, ob für die Optimierung auch ein GIF erstellt werden soll. Für Erstellung eines GIFs muss die Option jedoch schon vor der Optimierung ausgewählt werden. Ist die Option aktiv, so wird für jeden Iterationsschritt des Optimierers eine Grafik erstellt. Diese Grafiken werden am Ende der Optimierung zu einem GIF zusammengefügt und ganz unten auf der Webseite angezeigt. Das GIF lässt sich so wie die anderen Grafiken herunterladen. Folgend ist ein solches GIF dargestellt.
 
 ![Optimierung GIF](images/optimization.gif)
 
