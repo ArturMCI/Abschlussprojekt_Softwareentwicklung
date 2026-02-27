@@ -331,6 +331,18 @@ Damit werden alle in der Aufgabenstellung definierten Minimalanforderungen erfü
 
 ---
 
+# Bedienung des Programms
+
+Um eine Struktur zu erstellen muss in der Sidebar zuerst über die Felder "Breite" und "Höhe" die Anzahl der Knoten in x- und in z-Richtung ausgewählt werden. Anschließend können in der Sidebar weitere Einstellungen, wie Lagerung, Kraftangriffspunkt, Darstellungsmodus oder Zielmasse für die Optimierung getätigt werden. Diese sind im Abschnitt **Erweiterungen** genauer beschrieben. 
+
+Ist alles wie gewollt eingestellt, kann im Abschnitt **Optimierung** der Button "Generieren" gedrückt werden, um die Ausgansstruktur zu erstellen. Diese erscheint dann rechts im Hauptteil einmal im normalen Zustand und im deformierten Zustand. Ebenfalls werden verschiedene Kennwerte der Struktur unterhalb der Diagramme dargestellt. 
+
+Anschließend kann man den Button "Optimieren" auswählen, um die Optimierung zu starten. Oben erscheint eine Anzeige, welche den Fortschritt der Optimierung darstellt. Sobald die Optimierung fertig ist, erscheinen unter den bereits vorhandenen Diagrammen die entsprechenden Diagramme der optimierten Struktur. 
+
+Die optimierte Struktur kann anschließend, falls gewünscht, ganz unten in der Sidebar gespeichert werden, um sie zu einem späteren Zeitpunkt wieder zu laden. Dies macht man im obersten Abschnitt der Sidebar (genauer beschrieben in **Erweiterungen**).
+
+---
+
 # Erweiterungen
 
 Im Rahmen dieses Abschlussprojekts wurden nicht nur die Minimalanforderungen erfüllt, sondern ebenfalls einige Erweiterungen implementiert. Folgend wird jedes zusätzlich implementierte Feature kurz erklärt und beschrieben.
@@ -379,9 +391,12 @@ In den Minimalanforderungen ist festgelegt, dass man die optimierte Struktur als
 
 Die Minimalanforderungen verlangen, dass man die optimierte Struktur speichern und zu einem späteren Zeitpunkt wieder laden kann. In diesem Projekt wurde zusätzlich implementiert, dass beliebig viele Strukturen in der Datenbank, welche mit TinyDB umgesetzt wurde, abgespeichert werden können. Dafür gibt es in der Sidebar der UI ein Feld, wo ein Name für die Struktur festgelegt werden kann. Die Struktur wird dann mit einer bestimmten ID in die Datenbank gespeichert. Hierbei kann nur die optimierte Struktur abgespeichert werden. Existiert bereits eine Struktur mit dem gleichen Namen, so wird diese Struktur überschrieben.
 
+![Speichersystem](images/Erweitertes_Speicherungssystem.png)
+
 Über das Drop-Down Menü ganz oben in der Seitenleiste können gespeicherte Strukturen anhand ihres Namens aus der Datenbank geladen werden und anschließend weiter optimiert werden. Dafür wird mit dem Drop-Down Menü eine Struktur ausgewählt und auf den Button “Laden” geklickt. Es besteht ebenfalls die Möglichkeit die ausgewählte Struktur mit dem Button “Löschen” wieder aus der Datenbank zu löschen.
 
-![Speichersystem](images/Erweitertes_Speicherungssystem.png)
+![Speichersystem2](images/erweiterteSpeicherung2.png)
+![Speichersystem3](images/erweiterteSpeicherung3.png)
 
 ---
 
@@ -389,43 +404,37 @@ Die Minimalanforderungen verlangen, dass man die optimierte Struktur speichern u
 
 Für dieses Abschlussprojekt wurde ein Feature implementiert, das die Darstellung der Plots einstellbar macht. Hierbei gibt es 3 verschiedene Modi: 
 
+![Plot Modus](images/Plot_Modus.png)
+
 Im Modus “Nodes only” werden nur die Knoten der Struktur als Punkte im Plot gezeichnet. Dies eignet sich vor allem für Strukturen mit vielen Knoten, da das Diagramm sonst unübersichtlich werden würde.
 
 Im Modus “Lines (Federn)” hingegen werden die Knoten samt allen Federn der Struktur geplottet, was vor allem bei kleineren Strukturen eine genauere Darstellung der Verformung ermöglicht.
 
 Im standardmäßig eingestellten Modus “Auto” wird je nach Größe der Struktur (Anzahl der Knoten) umgeschalten zwischen der Darstellung mit den Federn und der Darstellung von den Knoten allein. In folgender Darstellung ist der Plot einer größeren Struktur (unverformt) dargestellt, der nur die Knoten enthält.
-
-Hier ist nun eine kleinere Struktur (verformt) dargestellt. Hierbei sind auch die Federn abgebildet.
-
 ### Beispiel: Nodes only (optimiert)
-
 ![Optimized Nodes Only](images/optimized_(nodes_only).png)
 
+Hier ist nun eine kleinere Struktur (verformt) dargestellt. Hierbei sind auch die Federn abgebildet.
 ### Beispiel: Lines (Federn) (deformiert)
 
 ![Optimized Lines](images/optimized.png)
-
-### Auswahl im UI (Auto / Nodes only / Lines)
-
-![Plot Modus](images/Plot_Modus.png)
 
 ---
 
 ## Plot als Heatmap
 
 Für die Plots, die eine deformierte Struktur darstellen, wurde eine Option implementiert, mit der die Knoten/Federn je nach aufgenommener Verformungsenergie unterschiedlich eingefärbt werden. Dies geschieht über die Checkbox in der Sidebar:
-
-Wenn die Option aktiviert ist, werden die beiden Grafiken der deformierten Plots als Heatmap dargestellt. Das funktioniert für beide Plot-Modi, nachfolgend ist eine Heatmap im “Lines (Federn)” Modus und eine im “Nodes only” Modus dargestellt. Es lässt sich auch nach der Optimierung noch zwischen der normalen Darstellung und der als Heatmap umschalten.
-
 ![Heatmap Option](images/Plot_als_Heatmap.png)
 
-### Heatmap – Nodes only
-
-![Heatmap Nodes](images/Energie_Heatmap_(Deformed).png)
+Wenn die Option aktiviert ist, werden die beiden Grafiken der deformierten Plots als Heatmap dargestellt. Das funktioniert für beide Plot-Modi, nachfolgend ist eine Heatmap im “Lines (Federn)” Modus und eine im “Nodes only” Modus dargestellt. Es lässt sich auch nach der Optimierung noch zwischen der normalen Darstellung und der als Heatmap umschalten.
 
 ### Heatmap – Lines (Federn)
 
 ![Heatmap Lines](images/Energie_Heatmap_(Deformed_2).png)
+
+### Heatmap – Nodes only
+
+![Heatmap Nodes](images/Energie_Heatmap_(Deformed).png)
 
 ---
 
@@ -442,4 +451,4 @@ In der Sidebar des UI gibt es eine Checkbox, die einstellt, ob für die Optimier
 Artur Surberg  
 Julian Köll  
 
-Projekt im Rahmen des Moduls **Softwaredesign**
+(Projekt im Rahmen der Lehrveranstaltung **Softwaredesign (MECH-B-3-SWD-SWD-ILV)**)
