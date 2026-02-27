@@ -253,7 +253,7 @@ In den Minimalanforderungen ist festgelegt, dass man die optimierte Struktur als
 
 ---
 
-## erweitertes Speichersystem
+## Erweitertes Speichersystem
 
 Die Minimalanforderungen verlangen, dass man die optimierte Struktur speichern und zu einem späteren Zeitpunkt wieder laden kann. In diesem Projekt wurde zusätzlich implementiert, dass beliebig viele Strukturen in der Datenbank, welche mit TinyDB umgesetzt wurde, abgespeichert werden können. Dafür gibt es in der Sidebar der UI ein Feld, wo ein Name für die Struktur festgelegt werden kann. Die Struktur wird dann mit einer bestimmten ID in die Datenbank gespeichert. Hierbei kann nur die optimierte Struktur abgespeichert werden. Existiert bereits eine Struktur mit dem gleichen Namen, so wird diese Struktur überschrieben.
 
